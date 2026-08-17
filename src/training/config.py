@@ -20,8 +20,12 @@ class TrainingConfig:
     patch_size: int = 256
     stride: int = 128
 
-    batch_size: int = 4
-    num_workers: int = 0
+    # Start with 16.
+    # Increase to 32 only if GPU memory allows.
+    batch_size: int = 16
+
+    # Adjust according to friend's CPU.
+    num_workers: int = 8
 
     change_threshold: float = 0.01
 
@@ -32,9 +36,10 @@ class TrainingConfig:
     bce_weight: float = 0.5
     dice_weight: float = 0.5
 
-    # Initial baseline value.
-    # We will benchmark this later.
-    pos_weight: float = 5.0
+    # Baseline deliberately avoids stacking strong
+    # pixel-level positive weighting on top of
+    # change-aware patch sampling.
+    pos_weight: float = 1.0
 
     # =========================================================
     # Optimizer
@@ -57,9 +62,16 @@ class TrainingConfig:
 
     epochs: int = 30
 
-    # Number of epochs without validation improvement
-    # before early stopping.
-    early_stopping_patience: int = 7
+    # Give the scheduler time to reduce LR and
+    # allow the model to improve afterward.
+    early_stopping_patience: int = 12
+
+    # =========================================================
+    # Stability / performance
+    # =========================================================
+
+    use_amp: bool = True
+    gradient_clip_norm: float = 1.0
 
     # =========================================================
     # Checkpointing

@@ -9,10 +9,10 @@ class LEVIRCDTrainTransform:
     """
     Training augmentation for an already extracted 256x256 patch.
 
-    Spatial transformations are always synchronized across:
-        - T1 image
-        - T2 image
-        - ground-truth label
+    Spatial transformations are synchronized across:
+        - T1
+        - T2
+        - label
 
     Augmentations:
         - Random horizontal flip
@@ -20,7 +20,7 @@ class LEVIRCDTrainTransform:
         - Random 90-degree rotation
         - Random temporal swap
 
-    Images are converted to tensors in [0, 1].
+    Images are converted to [0, 1].
     Labels are converted to binary float32 tensors.
     """
 
@@ -29,31 +29,19 @@ class LEVIRCDTrainTransform:
 
     def __call__(self, image_a, image_b, label):
 
-        # =========================================================
         # Random horizontal flip
-        # =========================================================
-
         if random.random() < 0.5:
             image_a = TF.hflip(image_a)
             image_b = TF.hflip(image_b)
             label = TF.hflip(label)
 
-        # =========================================================
         # Random vertical flip
-        # =========================================================
-
         if random.random() < 0.5:
             image_a = TF.vflip(image_a)
             image_b = TF.vflip(image_b)
             label = TF.vflip(label)
 
-        # =========================================================
         # Random 90-degree rotation
-        #
-        # Only multiples of 90 degrees are used.
-        # Therefore no interpolation is required for the label.
-        # =========================================================
-
         k = random.randint(0, 3)
 
         if k != 0:
@@ -74,36 +62,18 @@ class LEVIRCDTrainTransform:
                 angle,
             )
 
-        # =========================================================
-        # Random temporal swap
-        #
-        # Change detection is symmetric:
-        #
-        # A -> B
-        #
-        # should produce the same change mask as:
-        #
-        # B -> A
-        # =========================================================
-
+        # Temporal swap.
+        # The binary change mask is symmetric:
+        # change(A, B) == change(B, A)
         if random.random() < 0.5:
-            image_a, image_b = (
-                image_b,
-                image_a,
-            )
+            image_a, image_b = image_b, image_a
 
-        # =========================================================
-        # Convert images to tensors
-        # =========================================================
-
+        # Convert images to [C, H, W], [0, 1]
         image_a = TF.to_tensor(image_a)
         image_b = TF.to_tensor(image_b)
 
-        # =========================================================
-        # Convert label to binary float32 tensor
-        # =========================================================
-
-        label = np.array(
+        # Convert label to binary [1, H, W]
+        label = np.asarray(
             label,
             dtype=np.uint8,
         )
@@ -125,19 +95,12 @@ class LEVIRCDTrainTransform:
 
 class LEVIRCDEvalTransform:
     """
-    Deterministic preprocessing for validation and test.
+    Deterministic preprocessing for validation/test.
 
-    By default:
-        - No crop
-        - Full 1024x1024 scene is preserved
+    Default:
+        Full image is preserved.
 
-    An optional crop_size can be supplied if memory becomes
-    a problem during validation/testing.
-
-    No random augmentation is applied during evaluation.
-
-    Images are converted to tensors in [0, 1].
-    Labels are converted to binary float32 tensors.
+    No random augmentation is applied.
     """
 
     def __init__(
@@ -153,10 +116,6 @@ class LEVIRCDEvalTransform:
         label,
     ):
 
-        # =========================================================
-        # Optional deterministic crop
-        # =========================================================
-
         if self.crop_size is not None:
 
             width, height = image_a.size
@@ -167,10 +126,9 @@ class LEVIRCDEvalTransform:
             ):
                 raise ValueError(
                     f"Image size "
-                    f"({width}, {height}) "
-                    f"is smaller than crop size "
-                    f"({self.crop_size}, "
-                    f"{self.crop_size})."
+                    f"({width}, {height}) is smaller than "
+                    f"crop size "
+                    f"({self.crop_size}, {self.crop_size})."
                 )
 
             top = (
@@ -205,23 +163,10 @@ class LEVIRCDEvalTransform:
                 self.crop_size,
             )
 
-        # =========================================================
-        # Convert images
-        # =========================================================
+        image_a = TF.to_tensor(image_a)
+        image_b = TF.to_tensor(image_b)
 
-        image_a = TF.to_tensor(
-            image_a
-        )
-
-        image_b = TF.to_tensor(
-            image_b
-        )
-
-        # =========================================================
-        # Convert label to binary float32 tensor
-        # =========================================================
-
-        label = np.array(
+        label = np.asarray(
             label,
             dtype=np.uint8,
         )

@@ -23,7 +23,7 @@ def create_train_dataloader(
         - change-aware weighted sampling
         - synchronized augmentation
         - multi-worker loading
-        - pinned memory for CUDA transfers
+        - pinned memory for CUDA
     """
 
     dataset = LEVIRCDPatchDataset(
@@ -52,11 +52,9 @@ def create_train_dataloader(
     if num_workers > 0:
         loader_kwargs["persistent_workers"] = True
 
-    loader = DataLoader(
+    return DataLoader(
         **loader_kwargs
     )
-
-    return loader
 
 
 def create_eval_dataloader(
@@ -66,17 +64,9 @@ def create_eval_dataloader(
     num_workers=4,
 ):
     """
-    Create a validation/test DataLoader.
+    Create validation/test DataLoader.
 
-    Evaluation uses complete scenes rather than the
-    training patch sampler.
-
-    Args:
-        dataset_dir:
-            Path to LEVIR-CD.
-
-        split:
-            "val" or "test".
+    Evaluation uses complete scenes.
     """
 
     if split not in {"val", "test"}:
@@ -100,8 +90,6 @@ def create_eval_dataloader(
     if num_workers > 0:
         loader_kwargs["persistent_workers"] = True
 
-    loader = DataLoader(
+    return DataLoader(
         **loader_kwargs
     )
-
-    return loader

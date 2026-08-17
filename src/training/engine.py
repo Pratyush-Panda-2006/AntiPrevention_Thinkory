@@ -19,6 +19,8 @@ class TrainingEngine:
         - validation
         - loss calculation
         - metrics
+        - AMP mixed-precision training
+        - gradient clipping
         - scheduler updates
         - checkpoint saving
         - checkpoint resume
@@ -50,6 +52,58 @@ class TrainingEngine:
 
         self.model = self.model.to(self.device)
 
+        # ---------------------------------------------------------
+        # AMP
+        # ---------------------------------------------------------
+
+        self.use_amp = (
+            bool(getattr(config, "use_amp", True))
+            and self.device.type == "cuda"
+        )
+
+        self.gradient_clip_norm = float(
+            getattr(
+                config,
+                "gradient_clip_norm",
+                1.0,
+            )
+        )
+
+        if self.use_amp:
+            # Use the modern torch.amp API when available.
+            if hasattr(torch, "amp") and hasattr(
+                torch.amp,
+                "GradScaler",
+            ):
+                self.scaler = torch.amp.GradScaler(
+                    "cuda",
+                    enabled=True,
+                )
+            else:
+                # Compatibility fallback for older PyTorch.
+                self.scaler = torch.cuda.amp.GradScaler(
+                    enabled=True,
+                )
+        else:
+            # A disabled scaler keeps the training code simple
+            # and makes CPU smoke tests work normally.
+            if hasattr(torch, "amp") and hasattr(
+                torch.amp,
+                "GradScaler",
+            ):
+                self.scaler = torch.amp.GradScaler(
+                    "cuda",
+                    enabled=False,
+                )
+            else:
+                self.scaler = torch.cuda.amp.GradScaler(
+                    enabled=False,
+                )
+
+        # ---------------------------------------------------------
+        # Checkpoint directory
+        # ---------------------------------------------------------
+
         self.checkpoint_dir = Path(
             config.checkpoint_dir
         )
@@ -59,10 +113,38 @@ class TrainingEngine:
             exist_ok=True,
         )
 
+        # ---------------------------------------------------------
+        # Training state
+        # ---------------------------------------------------------
+
         self.start_epoch = 1
         self.best_f1 = -float("inf")
         self.epochs_without_improvement = 0
         self.history = []
+
+    # =============================================================
+    # AMP helper
+    # =============================================================
+
+    def _autocast_context(self):
+        """
+        Return an autocast context.
+
+        AMP is enabled only for CUDA. CPU training remains
+        full precision.
+        """
+
+        if self.use_amp:
+            return torch.autocast(
+                device_type="cuda",
+                dtype=torch.float16,
+                enabled=True,
+            )
+
+        return torch.autocast(
+            device_type="cpu",
+            enabled=False,
+        )
 
     # =============================================================
     # Training
@@ -72,9 +154,19 @@ class TrainingEngine:
         self,
         max_batches=None,
     ):
+        """
+        Train the model for one epoch.
+
+        Args:
+            max_batches:
+                Optional limit used for smoke tests.
+                None = complete training loader.
+        """
+
         self.model.train()
 
         total_loss = 0.0
+        samples_processed = 0
         batches_processed = 0
 
         for batch_index, batch in enumerate(
@@ -106,21 +198,71 @@ class TrainingEngine:
                 set_to_none=True
             )
 
-            logits = self.model(
-                image_a,
-                image_b,
+            # -----------------------------------------------------
+            # Forward + loss
+            # -----------------------------------------------------
+
+            with self._autocast_context():
+
+                logits = self.model(
+                    image_a,
+                    image_b,
+                )
+
+                loss = self.criterion(
+                    logits,
+                    targets,
+                )
+
+            # -----------------------------------------------------
+            # Backward
+            # -----------------------------------------------------
+
+            if self.use_amp:
+
+                self.scaler.scale(
+                    loss
+                ).backward()
+
+                # Gradients must be unscaled before clipping.
+                self.scaler.unscale_(
+                    self.optimizer
+                )
+
+                torch.nn.utils.clip_grad_norm_(
+                    self.model.parameters(),
+                    self.gradient_clip_norm,
+                )
+
+                self.scaler.step(
+                    self.optimizer
+                )
+
+                self.scaler.update()
+
+            else:
+
+                loss.backward()
+
+                torch.nn.utils.clip_grad_norm_(
+                    self.model.parameters(),
+                    self.gradient_clip_norm,
+                )
+
+                self.optimizer.step()
+
+            # -----------------------------------------------------
+            # Loss accounting
+            # -----------------------------------------------------
+
+            batch_size = targets.shape[0]
+
+            total_loss += (
+                loss.detach().item()
+                * batch_size
             )
 
-            loss = self.criterion(
-                logits,
-                targets,
-            )
-
-            loss.backward()
-
-            self.optimizer.step()
-
-            total_loss += loss.item()
+            samples_processed += batch_size
             batches_processed += 1
 
         if batches_processed == 0:
@@ -130,12 +272,13 @@ class TrainingEngine:
 
         average_loss = (
             total_loss
-            / batches_processed
+            / samples_processed
         )
 
         return {
             "loss": average_loss,
             "batches": batches_processed,
+            "samples": samples_processed,
         }
 
     # =============================================================
@@ -148,15 +291,16 @@ class TrainingEngine:
         max_batches=None,
     ):
         """
-        Validate over complete validation scenes.
+        Validate the model over complete validation scenes.
 
-        Confusion counts are accumulated over all processed
-        pixels before calculating the final metrics.
+        Metrics are calculated from accumulated TP/TN/FP/FN
+        counts over all processed pixels.
         """
 
         self.model.eval()
 
         total_loss = 0.0
+        samples_processed = 0
         batches_processed = 0
 
         counts = empty_counts()
@@ -186,24 +330,28 @@ class TrainingEngine:
                 non_blocking=True,
             )
 
-            logits = self.model(
-                image_a,
-                image_b,
-            )
+            # -----------------------------------------------------
+            # Forward + loss
+            # -----------------------------------------------------
 
-            loss = self.criterion(
-                logits,
-                targets,
-            )
+            with self._autocast_context():
 
-            total_loss += loss.item()
+                logits = self.model(
+                    image_a,
+                    image_b,
+                )
+
+                loss = self.criterion(
+                    logits,
+                    targets,
+                )
 
             # -----------------------------------------------------
-            # Convert logits → binary predictions
+            # Metrics
             # -----------------------------------------------------
 
             probabilities = torch.sigmoid(
-                logits
+                logits.float()
             )
 
             predictions = (
@@ -247,6 +395,14 @@ class TrainingEngine:
                 batch_counts,
             )
 
+            batch_size = targets.shape[0]
+
+            total_loss += (
+                loss.detach().item()
+                * batch_size
+            )
+
+            samples_processed += batch_size
             batches_processed += 1
 
         if batches_processed == 0:
@@ -260,10 +416,11 @@ class TrainingEngine:
 
         metrics["loss"] = (
             total_loss
-            / batches_processed
+            / samples_processed
         )
 
         metrics["batches"] = batches_processed
+        metrics["samples"] = samples_processed
 
         return metrics
 
@@ -276,6 +433,10 @@ class TrainingEngine:
         epoch,
         filename="last.pt",
     ):
+        """
+        Save complete training state.
+        """
+
         checkpoint_path = (
             self.checkpoint_dir
             / filename
@@ -292,6 +453,9 @@ class TrainingEngine:
 
             "scheduler_state_dict":
                 self.scheduler.state_dict(),
+
+            "scaler_state_dict":
+                self.scaler.state_dict(),
 
             "best_f1":
                 self.best_f1,
@@ -321,6 +485,10 @@ class TrainingEngine:
         self,
         checkpoint_path,
     ):
+        """
+        Resume training from a checkpoint.
+        """
+
         checkpoint_path = Path(
             checkpoint_path
         )
@@ -346,6 +514,15 @@ class TrainingEngine:
         self.scheduler.load_state_dict(
             checkpoint["scheduler_state_dict"]
         )
+
+        scaler_state = checkpoint.get(
+            "scaler_state_dict"
+        )
+
+        if scaler_state:
+            self.scaler.load_state_dict(
+                scaler_state
+            )
 
         self.start_epoch = (
             checkpoint["epoch"] + 1
@@ -378,6 +555,10 @@ class TrainingEngine:
     # =============================================================
 
     def save_history(self):
+        """
+        Save training history as JSON.
+        """
+
         history_path = (
             self.checkpoint_dir
             / "training_history.json"
@@ -406,12 +587,31 @@ class TrainingEngine:
         max_train_batches=None,
         max_val_batches=None,
     ):
+        """
+        Run the training process.
+
+        max_train_batches and max_val_batches are intended
+        for smoke testing.
+
+        For the real run, both should remain None.
+        """
+
         print("=" * 60)
         print("SIAMESE U-NET TRAINING")
         print("=" * 60)
 
         print(
             f"\nDevice: {self.device}"
+        )
+
+        print(
+            f"AMP enabled: "
+            f"{self.use_amp}"
+        )
+
+        print(
+            f"Gradient clip norm: "
+            f"{self.gradient_clip_norm}"
         )
 
         print(
@@ -464,6 +664,9 @@ class TrainingEngine:
             # Scheduler
             # -----------------------------------------------------
 
+            # IMPORTANT:
+            # Higher F1 is better, therefore the scheduler must be
+            # constructed with mode="max".
             self.scheduler.step(
                 val_result["f1"]
             )
@@ -519,8 +722,14 @@ class TrainingEngine:
                 "train_batches":
                     train_result["batches"],
 
+                "train_samples":
+                    train_result["samples"],
+
                 "val_batches":
                     val_result["batches"],
+
+                "val_samples":
+                    val_result["samples"],
             }
 
             self.history.append(
@@ -624,12 +833,12 @@ class TrainingEngine:
                 )
 
                 print(
-                    f"\n✓ New best F1: "
+                    f"\n* New best F1: "
                     f"{self.best_f1:.4f}"
                 )
 
                 print(
-                    f"✓ Best checkpoint: "
+                    f"* Best checkpoint: "
                     f"{best_path}"
                 )
 

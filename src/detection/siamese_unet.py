@@ -223,6 +223,11 @@ class SiameseUNet(nn.Module):
             kernel_size=1,
         )
 
+        nn.init.constant_(
+            self.final.bias,
+            -3.0,
+        )
+
     def forward(self, image_a, image_b):
 
         # ---------------------------------------------------------
