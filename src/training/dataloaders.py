@@ -1,5 +1,3 @@
-from pathlib import Path
-
 from torch.utils.data import DataLoader
 
 from data.levir_patch_dataset import LEVIRCDPatchDataset
@@ -12,8 +10,8 @@ from preprocessing.transforms import (
 
 def create_train_dataloader(
     dataset_dir,
-    batch_size=4,
-    num_workers=0,
+    batch_size=16,
+    num_workers=8,
     patch_size=256,
     stride=128,
 ):
@@ -24,6 +22,8 @@ def create_train_dataloader(
         - overlapping 256x256 patches
         - change-aware weighted sampling
         - synchronized augmentation
+        - multi-worker loading
+        - pinned memory for CUDA transfers
     """
 
     dataset = LEVIRCDPatchDataset(
@@ -40,13 +40,20 @@ def create_train_dataloader(
         dataset
     )
 
+    loader_kwargs = {
+        "dataset": dataset,
+        "batch_size": batch_size,
+        "sampler": sampler,
+        "num_workers": num_workers,
+        "pin_memory": True,
+        "drop_last": True,
+    }
+
+    if num_workers > 0:
+        loader_kwargs["persistent_workers"] = True
+
     loader = DataLoader(
-        dataset,
-        batch_size=batch_size,
-        sampler=sampler,
-        num_workers=num_workers,
-        pin_memory=False,
-        drop_last=True,
+        **loader_kwargs
     )
 
     return loader
@@ -56,7 +63,7 @@ def create_eval_dataloader(
     dataset_dir,
     split,
     batch_size=1,
-    num_workers=0,
+    num_workers=4,
 ):
     """
     Create a validation/test DataLoader.
@@ -82,12 +89,19 @@ def create_eval_dataloader(
         split=split,
     )
 
+    loader_kwargs = {
+        "dataset": dataset,
+        "batch_size": batch_size,
+        "shuffle": False,
+        "num_workers": num_workers,
+        "pin_memory": True,
+    }
+
+    if num_workers > 0:
+        loader_kwargs["persistent_workers"] = True
+
     loader = DataLoader(
-        dataset,
-        batch_size=batch_size,
-        shuffle=False,
-        num_workers=num_workers,
-        pin_memory=False,
+        **loader_kwargs
     )
 
     return loader
