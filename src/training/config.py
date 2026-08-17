@@ -8,6 +8,14 @@ class TrainingConfig:
     """
 
     # =========================================================
+    # Observability / Run Tracking
+    # =========================================================
+
+    experiment_name: str = "siamese_unet_baseline"
+    log_level: str = "normal"  # "minimal", "normal", "detailed"
+    run_dir: str = ""  # Populated dynamically at runtime
+
+    # =========================================================
     # Reproducibility
     # =========================================================
 
