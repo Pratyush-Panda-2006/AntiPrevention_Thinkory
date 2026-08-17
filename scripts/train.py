@@ -38,12 +38,27 @@ def main():
     parser.add_argument("--train-batches", type=int, default=2, help="Number of training batches for smoke test.")
     parser.add_argument("--val-batches", type=int, default=1, help="Number of validation batches for smoke test.")
     
-    parser.add_argument("--experiment-name", type=str, default="siamese_unet_baseline", help="Name of the experiment run.")
-    parser.add_argument("--resume", type=str, default="", help="Path to checkpoint to resume from.")
+    parser.add_argument(
+        "--experiment-name",
+        type=str,
+        default="",
+        help="Optional custom experiment name."
+    )
+    parser.add_argument(
+        "--model",
+        type=str,
+        choices=[
+            "siamese_unet",
+            "resnet34_unet",
+        ],
+        default="siamese_unet",
+        help="Select model architecture."
+    )
     parser.add_argument("--log-level", type=str, choices=["minimal", "normal", "detailed"], default="normal", help="Logging verbosity.")
     parser.add_argument("--batch-size", type=int, default=None, help="Override batch size.")
     parser.add_argument("--num-workers", type=int, default=None, help="Override number of DataLoader workers.")
     parser.add_argument("--epochs", type=int, default=None, help="Override total epochs.")
+    parser.add_argument("--resume", type=str, default=None, help="Path to checkpoint to resume training from.")
 
     args = parser.parse_args()
 
@@ -61,8 +76,18 @@ def main():
     # =========================================================
 
     config = TrainingConfig()
-    config.experiment_name = args.experiment_name
+
+    config.model_name = args.model
     config.log_level = args.log_level
+
+    # ---------------------------------------------------------
+    # Model-specific default experiment name
+    # ---------------------------------------------------------
+
+    if args.experiment_name:
+        config.experiment_name = args.experiment_name
+    else:
+        config.experiment_name = args.model
 
     if args.batch_size is not None:
         config.batch_size = args.batch_size
@@ -112,6 +137,7 @@ def main():
     print("=" * 70)
     print(f"Run Directory: {run_dir}")
     print(f"Mode: {'SMOKE TEST' if args.smoke_test else 'FULL TRAINING'}")
+    print(f"Model: {config.model_name}")
 
     # =========================================================
     # Dataset Preparation & Verification

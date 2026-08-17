@@ -16,6 +16,22 @@ class TrainingConfig:
     run_dir: str = ""  # Populated dynamically at runtime
 
     # =========================================================
+    # Model Selection
+    # =========================================================
+
+    # Available:
+    #   siamese_unet
+    #   resnet34_unet
+    #
+    # Model 1:
+    #   from-scratch Siamese U-Net
+    #
+    # Model 2:
+    #   ImageNet-pretrained ResNet-34 Siamese U-Net
+
+    model_name: str = "siamese_unet"
+
+    # =========================================================
     # Reproducibility
     # =========================================================
 

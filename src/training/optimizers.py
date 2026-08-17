@@ -2,23 +2,36 @@ import torch
 
 from detection.losses import BCEDiceLoss
 from detection.siamese_unet import SiameseUNet
+from detection.siamese_resnet34_unet import SiameseResNet34UNet
 from training.config import TrainingConfig
 
 
-def create_model():
+def create_model(config):
     """
-    Create the baseline Siamese U-Net.
+    Create the specified Siamese U-Net architecture.
     """
 
-    return SiameseUNet(
-        in_channels=3,
-        num_classes=1,
-    )
+    if config.model_name == "siamese_unet":
+        return SiameseUNet(
+            in_channels=3,
+            num_classes=1,
+        )
+    elif config.model_name == "resnet34_unet":
+        return SiameseResNet34UNet(
+            in_channels=3,
+            num_classes=1,
+        )
+    else:
+        raise ValueError(
+            f"Unknown model: {config.model_name}\n"
+            "Available models: "
+            "'siamese_unet', 'resnet34_unet'"
+        )
 
 
 def create_loss(config):
     """
-    Create BCE + Dice loss using the training configuration.
+    Create BCE + Dice loss.
     """
 
     return BCEDiceLoss(
@@ -44,8 +57,7 @@ def create_scheduler(optimizer, config):
     """
     Create ReduceLROnPlateau scheduler.
 
-    Validation F1 will be used as the monitored metric
-    by the training engine.
+    Monitors validation F1.
     """
 
     return torch.optim.lr_scheduler.ReduceLROnPlateau(
@@ -59,16 +71,10 @@ def create_scheduler(optimizer, config):
 
 def create_training_components(config):
     """
-    Create all components required for training.
-
-    Returns:
-        model
-        criterion
-        optimizer
-        scheduler
+    Create complete training stack.
     """
 
-    model = create_model()
+    model = create_model(config)
 
     criterion = create_loss(config)
 
