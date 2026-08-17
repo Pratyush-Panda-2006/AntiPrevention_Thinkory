@@ -1,0 +1,19 @@
+{
+  "os": "Windows",
+  "os_release": "11",
+  "python_version": "3.13.7",
+  "pytorch_version": "2.6.0+cu124",
+  "hostname": "NIRAKAR",
+  "cuda_available": true,
+  "git_commit": "c37f340055ee6724a84b88d5a38b95d129b89b9b",
+  "git_branch": "main",
+  "git_is_dirty": true,
+  "cpu_count_physical": "unavailable",
+  "cpu_count_logical": "unavailable",
+  "system_ram_gb": "unavailable",
+  "cuda_version": "12.4",
+  "cudnn_version": 90100,
+  "gpu_count": 1,
+  "gpu_name": "NVIDIA GeForce RTX 4050 Laptop GPU",
+  "gpu_total_memory_gb": 6.0
+}

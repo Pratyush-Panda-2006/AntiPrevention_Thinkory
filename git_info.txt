@@ -1,0 +1,9 @@
+﻿GIT COMMIT HEAD:
+18ae32a2f15a8377d4b9d3f05bbbdc22575d16d4
+
+LAST 5 COMMITS:
+18ae32a Add full training JSON metadata and generated plots to baseline results
+582f369 Merge branch 'Pratyush-Panda-2006:main' into main
+4198e0c Add README and baseline evaluation results
+a0ea46f Merge pull request #1 from nirakarpatel/main
+59151e9 Freeze Model 1 baseline - 90.80 F1

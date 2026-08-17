@@ -1,0 +1,25 @@
+EXACT MODEL CONFIGURATION FOR MODEL 1 BASELINE
+===============================================
+model architecture: Siamese U-Net
+parameter count: 31,037,633
+batch size: 2
+patch size: 256
+stride: 128
+epochs: 30
+learning rate: 0.0001
+weight decay: 0.0001
+BCE weight: 0.5
+Dice weight: 0.5
+pos_weight: 1.0
+threshold: 0.5
+optimizer: AdamW (default)
+scheduler: ReduceLROnPlateau (default)
+scheduler mode: min (default)
+scheduler patience: 3
+early stopping patience: 12
+AMP enabled/disabled: True
+gradient clipping: 1.0
+num_workers: 2
+pin_memory: True
+augmentation settings: default (HorizontalFlip, VerticalFlip, RandomRotate90, RandomBrightnessContrast)
+random seed: 42

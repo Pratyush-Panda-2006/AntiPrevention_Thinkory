@@ -1,0 +1,13 @@
+{
+  "run_id": "2026-08-17_20-42-38_siamese_unet_baseline",
+  "status": "completed",
+  "best_epoch": 25,
+  "best_f1": 0.9147317270913582,
+  "best_iou": 0.8428623133336182,
+  "best_precision": 0.9259270441862233,
+  "best_recall": 0.9038038993448066,
+  "final_epoch": 30,
+  "final_f1": 0.8952751386459874,
+  "training_seconds": 7463.310539722443,
+  "git_commit": "c37f340055ee6724a84b88d5a38b95d129b89b9b"
+}

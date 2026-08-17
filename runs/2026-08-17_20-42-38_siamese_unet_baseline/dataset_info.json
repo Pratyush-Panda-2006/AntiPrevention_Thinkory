@@ -1,0 +1,8 @@
+{
+  "dataset_name": "LEVIR-CD",
+  "dataset_root": "A:\\antiprevention_thinkory\\data\\raw\\LEVIR-CD",
+  "train_patch_count": 21805,
+  "val_scene_count": 64,
+  "patch_size": 256,
+  "stride": 128
+}
