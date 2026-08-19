@@ -31,7 +31,7 @@ def main():
     # =========================================================
 
     parser = argparse.ArgumentParser(
-        description="Train the LEVIR-CD Siamese U-Net."
+        description="Train a LEVIR-CD change-detection model."
     )
 
     parser.add_argument("--smoke-test", action="store_true", help="Run a limited training sanity test.")
@@ -50,6 +50,7 @@ def main():
         choices=[
             "siamese_unet",
             "resnet34_unet",
+            "snunet_cd",
         ],
         default="siamese_unet",
         help="Select model architecture."

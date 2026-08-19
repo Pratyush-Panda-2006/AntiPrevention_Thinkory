@@ -4,16 +4,21 @@ from dataclasses import dataclass
 @dataclass
 class TrainingConfig:
     """
-    Configuration for the baseline Siamese U-Net training run.
+    Configuration for LEVIR-CD change-detection training.
+
+    Supported models:
+        - siamese_unet
+        - resnet34_unet
+        - snunet_cd
     """
 
     # =========================================================
     # Observability / Run Tracking
     # =========================================================
 
-    experiment_name: str = "siamese_unet_baseline"
-    log_level: str = "normal"  # "minimal", "normal", "detailed"
-    run_dir: str = ""  # Populated dynamically at runtime
+    experiment_name: str = "siamese_unet"
+    log_level: str = "normal"
+    run_dir: str = ""
 
     # =========================================================
     # Model Selection
@@ -22,12 +27,17 @@ class TrainingConfig:
     # Available:
     #   siamese_unet
     #   resnet34_unet
+    #   snunet_cd
     #
     # Model 1:
-    #   from-scratch Siamese U-Net
+    #   From-scratch Siamese U-Net
     #
     # Model 2:
     #   ImageNet-pretrained ResNet-34 Siamese U-Net
+    #
+    # Model 3:
+    #   SNUNet-CD architecture
+    #   (final-output-only training)
 
     model_name: str = "siamese_unet"
 
@@ -44,11 +54,9 @@ class TrainingConfig:
     patch_size: int = 256
     stride: int = 128
 
-    # Start with 16.
-    # Increase to 32 only if GPU memory allows.
+    # Production defaults are intended for the GPU machine.
+    # Local CPU smoke tests should override these from CLI.
     batch_size: int = 16
-
-    # Adjust according to friend's CPU.
     num_workers: int = 8
 
     change_threshold: float = 0.01
@@ -60,9 +68,8 @@ class TrainingConfig:
     bce_weight: float = 0.5
     dice_weight: float = 0.5
 
-    # Baseline deliberately avoids stacking strong
-    # pixel-level positive weighting on top of
-    # change-aware patch sampling.
+    # Avoid stacking strong pixel-level positive weighting
+    # on top of change-aware patch sampling.
     pos_weight: float = 1.0
 
     # =========================================================
@@ -85,13 +92,10 @@ class TrainingConfig:
     # =========================================================
 
     epochs: int = 30
-
-    # Give the scheduler time to reduce LR and
-    # allow the model to improve afterward.
     early_stopping_patience: int = 12
 
     # =========================================================
-    # Stability / performance
+    # Stability / Performance
     # =========================================================
 
     use_amp: bool = True
@@ -102,7 +106,6 @@ class TrainingConfig:
     # =========================================================
 
     checkpoint_dir: str = "checkpoints"
-
     save_best_only: bool = False
 
     # =========================================================

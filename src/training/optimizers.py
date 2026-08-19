@@ -2,31 +2,50 @@ import torch
 
 from detection.losses import BCEDiceLoss
 from detection.siamese_unet import SiameseUNet
-from detection.siamese_resnet34_unet import SiameseResNet34UNet
-from training.config import TrainingConfig
+from detection.siamese_resnet34_unet import (
+    SiameseResNet34UNet,
+)
+from detection.snunet_cd import SNUNetCD
 
 
 def create_model(config):
     """
-    Create the specified Siamese U-Net architecture.
+    Create the selected change-detection model.
+
+    Supported:
+        siamese_unet
+        resnet34_unet
+        snunet_cd
     """
 
     if config.model_name == "siamese_unet":
+
         return SiameseUNet(
             in_channels=3,
             num_classes=1,
         )
-    elif config.model_name == "resnet34_unet":
+
+    if config.model_name == "resnet34_unet":
+
         return SiameseResNet34UNet(
             in_channels=3,
             num_classes=1,
         )
-    else:
-        raise ValueError(
-            f"Unknown model: {config.model_name}\n"
-            "Available models: "
-            "'siamese_unet', 'resnet34_unet'"
+
+    if config.model_name == "snunet_cd":
+
+        return SNUNetCD(
+            in_channels=3,
+            num_classes=1,
         )
+
+    raise ValueError(
+        f"Unknown model: {config.model_name}\n"
+        "Available models: "
+        "'siamese_unet', "
+        "'resnet34_unet', "
+        "'snunet_cd'"
+    )
 
 
 def create_loss(config):
@@ -57,7 +76,8 @@ def create_scheduler(optimizer, config):
     """
     Create ReduceLROnPlateau scheduler.
 
-    Monitors validation F1.
+    Validation F1 is the monitored metric.
+    Higher F1 is better, therefore mode='max'.
     """
 
     return torch.optim.lr_scheduler.ReduceLROnPlateau(
@@ -71,7 +91,13 @@ def create_scheduler(optimizer, config):
 
 def create_training_components(config):
     """
-    Create complete training stack.
+    Create the complete training stack.
+
+    Returns:
+        model
+        criterion
+        optimizer
+        scheduler
     """
 
     model = create_model(config)
