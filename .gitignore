@@ -6,3 +6,6 @@ data/
 checkpoints/
 runs/
 *.zip
+
+# Local environment — never commit real credentials
+.env

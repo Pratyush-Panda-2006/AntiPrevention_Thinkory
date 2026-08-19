@@ -6,3 +6,9 @@ matplotlib
 scikit-learn
 tqdm
 PyYAML
+
+# ── CDSE / Sentinel-1 SAR ingestion ──────────────────────────────────────────
+requests           # HTTP client for CDSE OAuth + Processing API
+python-dotenv      # Load credentials from .env
+rasterio           # GeoTIFF decoding
+shapely            # BBox geometry helpers
