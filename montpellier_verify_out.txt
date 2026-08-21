@@ -1,0 +1,40 @@
+--- T1 Transformed ---
+File: S1A_IW_GRDH_1SDV_20150805T173853_20150805T173918_007131_009B9C_0633.tif
+Width: 451, Height: 426
+CRS: None
+Transform: | 1.00, 0.00, 0.00|
+| 0.00, 1.00, 0.00|
+| 0.00, 0.00, 1.00|
+Pixel size: (1.0, 1.0)
+Dtype: float64
+Bounds: BoundingBox(left=0.0, bottom=426.0, right=451.0, top=0.0)
+--- T2 Candidate 1 ---
+File: S1A_IW_GRDH_1SDV_20171028T055211_20171028T055236_019009_020227_8A73.tif
+Width: 451, Height: 426
+CRS: None
+Transform: | 1.00, 0.00, 0.00|
+| 0.00, 1.00, 0.00|
+| 0.00, 0.00, 1.00|
+Pixel size: (1.0, 1.0)
+Dtype: float64
+Bounds: BoundingBox(left=0.0, bottom=426.0, right=451.0, top=0.0)
+--- T2 Candidate 2 ---
+File: S1A_IW_GRDH_1SDV_20171029T173905_20171029T173930_019031_0202E5_5984.tif
+Width: 451, Height: 426
+CRS: None
+Transform: | 1.00, 0.00, 0.00|
+| 0.00, 1.00, 0.00|
+| 0.00, 0.00, 1.00|
+Pixel size: (1.0, 1.0)
+Dtype: float64
+Bounds: BoundingBox(left=0.0, bottom=426.0, right=451.0, top=0.0)
+--- OSCD Mask ---
+File: montpellier.tif
+Width: 451, Height: 426
+CRS: None
+Transform: | 1.00, 0.00, 0.00|
+| 0.00, 1.00, 0.00|
+| 0.00, 0.00, 1.00|
+Pixel size: (1.0, 1.0)
+Dtype: uint8
+Bounds: BoundingBox(left=0.0, bottom=426.0, right=451.0, top=0.0)

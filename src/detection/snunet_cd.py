@@ -57,9 +57,9 @@ class SNUNetCD(nn.Module):
     ):
         super().__init__()
 
-        if in_channels != 3:
+        if in_channels not in (2, 3):
             raise ValueError(
-                "SNUNetCD expects 3-channel RGB input."
+                "SNUNetCD expects 2-channel SAR or 3-channel RGB input."
             )
 
         # =====================================================

@@ -165,11 +165,18 @@ class TrainingEngine:
             image_b = batch["image_b"].to(self.device, non_blocking=True)
             targets = batch["label"].to(self.device, non_blocking=True)
 
+            valid_mask = batch.get("valid_mask", None)
+            if valid_mask is not None:
+                valid_mask = valid_mask.to(self.device, non_blocking=True)
+
             self.optimizer.zero_grad(set_to_none=True)
 
             with self._autocast_context():
                 logits = self.model(image_a, image_b)
-                loss = self.criterion(logits, targets)
+                if valid_mask is not None:
+                    loss = self.criterion(logits, targets, valid_mask=valid_mask)
+                else:
+                    loss = self.criterion(logits, targets)
 
             if self.use_amp:
                 self.scaler.scale(loss).backward()
@@ -280,13 +287,25 @@ class TrainingEngine:
             image_b = batch["image_b"].to(self.device, non_blocking=True)
             targets = batch["label"].to(self.device, non_blocking=True)
 
+            valid_mask = batch.get("valid_mask", None)
+            if valid_mask is not None:
+                valid_mask = valid_mask.to(self.device, non_blocking=True)
+
             with self._autocast_context():
                 logits = self.model(image_a, image_b)
-                loss = self.criterion(logits, targets)
+                if valid_mask is not None:
+                    loss = self.criterion(logits, targets, valid_mask=valid_mask)
+                else:
+                    loss = self.criterion(logits, targets)
 
             probabilities = torch.sigmoid(logits.float())
             predictions = probabilities >= self.config.threshold
             target_binary = targets >= 0.5
+
+            if valid_mask is not None:
+                valid_mask_bool = valid_mask >= 0.5
+                predictions = predictions[valid_mask_bool]
+                target_binary = target_binary[valid_mask_bool]
 
             batch_counts = {
                 "tp": int((predictions & target_binary).sum().item()),

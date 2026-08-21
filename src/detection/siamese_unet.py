@@ -177,6 +177,11 @@ class SiameseUNet(nn.Module):
     ):
         super().__init__()
 
+        if in_channels not in (2, 3):
+            raise ValueError(
+                "SiameseUNet expects 2-channel SAR or 3-channel RGB input."
+            )
+
         # ---------------------------------------------------------
         # Shared Siamese encoder
         # ---------------------------------------------------------

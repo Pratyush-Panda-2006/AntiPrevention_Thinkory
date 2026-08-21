@@ -295,7 +295,7 @@ def check_normalization(t1_arr, t2_arr) -> "tuple | None":
 
     for label, arr in [("T1", t1_arr), ("T2", t2_arr)]:
         try:
-            norm = normalize_sar_tensor(arr)
+            norm = normalize_sar_tensor(arr, is_linear=True)
         except Exception as exc:
             _fail(f"{label} normalization failed: {exc}")
             traceback.print_exc()
@@ -304,9 +304,9 @@ def check_normalization(t1_arr, t2_arr) -> "tuple | None":
         min_val = float(norm.min())
         max_val = float(norm.max())
 
-        if min_val < -1e-6 or max_val > 1.0 + 1e-6:
+        if min_val > 0 or max_val > 50 or min_val < -100:
             _fail(
-                f"{label}: normalized values out of [0, 1]: "
+                f"{label}: normalized values out of expected dB range: "
                 f"min={min_val:.6f}  max={max_val:.6f}"
             )
             return None
@@ -321,8 +321,8 @@ def check_normalization(t1_arr, t2_arr) -> "tuple | None":
             f"mean={float(norm.mean()):.4f}  std={float(norm.std()):.4f}"
         )
 
-    t1_norm = normalize_sar_tensor(t1_arr)
-    t2_norm = normalize_sar_tensor(t2_arr)
+    t1_norm = normalize_sar_tensor(t1_arr, is_linear=True)
+    t2_norm = normalize_sar_tensor(t2_arr, is_linear=True)
     return t1_norm, t2_norm
 
 
@@ -439,13 +439,64 @@ def check_high_level_api(auth) -> bool:
             return False
         arr_min = float(np.nanmin(arr))
         arr_max = float(np.nanmax(arr))
-        if arr_min < -1e-6 or arr_max > 1.0 + 1e-6:
-            _fail(f"{label}: values outside [0, 1]: min={arr_min:.6f}  max={arr_max:.6f}")
+        if arr_min > 0 or arr_max > 50 or arr_min < -100:
+            _fail(f"{label}: values outside expected dB range: min={arr_min:.6f}  max={arr_max:.6f}")
             return False
         _ok(
             f"{label}: shape={arr.shape}  "
             f"range=[{arr_min:.4f}, {arr_max:.4f}]"
         )
+
+    return True
+
+
+def check_request_payload() -> bool:
+    """Verify that the API request asks for SIGMA0_ELLIPSOID, orthorectify=True, and VV/VH."""
+    _header("PAYLOAD & LOADER LOGIC")
+    try:
+        from data_ingestion.sentinel_client import _build_request_body
+        from preprocessing.sar_loader import normalize_sar_tensor
+        import numpy as np
+    except ImportError as exc:
+        _fail(f"Import failed: {exc}")
+        return False
+
+    # Check Request Body
+    body = _build_request_body(TEST_BBOX, TEST_DATE_T1, TEST_RESOLUTION)
+    proc = body["input"]["data"][0]["processing"]
+    
+    if proc.get("backCoeff") != "SIGMA0_ELLIPSOID":
+        _fail(f"Expected backCoeff='SIGMA0_ELLIPSOID', got {proc.get('backCoeff')}")
+        return False
+    _ok("backCoeff = SIGMA0_ELLIPSOID")
+
+    if proc.get("orthorectify") is not True:
+        _fail("Expected orthorectify=True")
+        return False
+    _ok("orthorectify = True")
+
+    evalscript = body.get("evalscript", "")
+    if "VV" not in evalscript or "VH" not in evalscript:
+        _fail("VV or VH missing from evalscript")
+        return False
+    _ok("VV and VH requested in evalscript")
+
+    # Check loader logic
+    # Mock TUM data (already in dB, e.g. -10 dB)
+    tum_mock = np.array([[[-10.0]]], dtype=np.float32)
+    tum_out = normalize_sar_tensor(tum_mock, is_linear=False)
+    if not np.isclose(tum_out[0, 0, 0], -10.0):
+        _fail(f"TUM data was modified! Expected -10.0, got {tum_out[0, 0, 0]}")
+        return False
+    _ok("TUM (is_linear=False) passes through unaltered")
+
+    # Mock CDSE data (linear power, e.g. 0.1 linear -> -10 dB)
+    cdse_mock = np.array([[[0.1]]], dtype=np.float32)
+    cdse_out = normalize_sar_tensor(cdse_mock, is_linear=True)
+    if not np.isclose(cdse_out[0, 0, 0], -10.0):
+        _fail(f"CDSE data not correctly converted! Expected -10.0, got {cdse_out[0, 0, 0]}")
+        return False
+    _ok("CDSE (is_linear=True) correctly converted to dB")
 
     return True
 
@@ -470,6 +521,10 @@ def main() -> int:
     # 1. Environment
     if not check_environment():
         failures.append("ENV: credentials not configured")
+
+    # 1.5 Payload & Loader Logic
+    if not check_request_payload():
+        failures.append("PAYLOAD/LOADER: assertion failed")
 
     # 2. Authentication
     auth = check_auth()

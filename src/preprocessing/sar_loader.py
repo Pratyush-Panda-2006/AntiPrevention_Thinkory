@@ -1,306 +1,563 @@
 """
 src/preprocessing/sar_loader.py
 ================================
-SAR data loading and normalization utilities for the Sentinel-1 ingestion
-pipeline.
 
-These functions bridge the raw GeoTIFF bytes returned by the CDSE Processing
-API and the (C, H, W) float32 tensor format expected by the Siamese UNet /
-SNUNet-CD models.
+SAR preprocessing utilities for the Sentinel-1 change-detection pipeline.
+
+Locked SAR representation
+-------------------------
+Training data:
+    Sigma0 ellipsoid
+    Orthorectified
+    Already in dB
+
+Live CDSE data:
+    SIGMA0_ELLIPSOID
+    Orthorectified
+    VV/VH returned in linear power
+    Converted locally to dB
+
+Locked normalization
+--------------------
+VV:
+    [-22.98, 5.63] dB -> [0, 1]
+
+VH:
+    [-32.33, -2.53] dB -> [0, 1]
+
+Invalid-data handling
+---------------------
+A separate validity mask is preserved.
+
+The mask is NOT a third model input channel.
+
+For TUM data:
+    finite dB values are valid.
+
+For CDSE data:
+    NaN / Inf / non-positive linear-power pixels are treated as invalid.
+    Invalid pixels are represented by 0.0 after normalization, while their
+    validity is preserved separately.
 
 Public API
 ----------
-    decode_geotiff_response(response_bytes) -> np.ndarray
-        Parse raw GeoTIFF bytes → float32 NumPy array (C, H, W).
+decode_geotiff_response(response_bytes, return_validity=False)
 
-    normalize_sar_tensor(arr, clip_min_db, clip_max_db) -> np.ndarray
-        Log-scale dB normalization + min-max to [0, 1].
+normalize_sar_tensor(
+    arr,
+    is_linear=False,
+    return_validity=False,
+)
 
-    to_torch_tensor(arr) -> torch.Tensor
-        Convert (C, H, W) NumPy → FloatTensor (no copy if already contiguous).
+to_torch_tensor(arr)
 
-    load_sar_pair_for_inference(t1_bytes, t2_bytes, ...) -> tuple[Tensor, Tensor]
-        Full decode → normalize → torch pipeline for a T1/T2 pair.
-
-Normalization strategy
-----------------------
-Sentinel-1 linear power backscatter values are:
-  1. Clipped to avoid log(0): values < 1e-10 are set to 1e-10.
-  2. Converted to decibels: dB = 10 * log10(linear_power)
-  3. Clipped to a physically sensible dB range [clip_min_db, clip_max_db].
-     Default: [-30 dB, 0 dB] — covers typical vegetated/urban surfaces.
-  4. Min-max scaled to [0.0, 1.0].
-
-This matches common SAR deep-learning preprocessing (e.g., used in
-SpaceNet 6, BigEarth-SAR, and similar benchmarks).
+load_sar_pair_for_inference(
+    t1_bytes,
+    t2_bytes,
+    is_linear=True,
+    return_tensors=True,
+    return_validity_mask=False,
+)
 """
 
 from __future__ import annotations
 
-import io
 import logging
-from typing import Optional
 
 import numpy as np
 
 logger = logging.getLogger(__name__)
 
-# Default dB clipping range for Sentinel-1 GRD GAMMA0 backscatter.
-# VV: typically -18 to 0 dB (land); VH: -25 to -5 dB (land).
-# Using -30 / 0 is deliberately wide to be safe across both polarisations
-# and across diverse land-cover types.
-_DEFAULT_CLIP_MIN_DB: float = -30.0
-_DEFAULT_CLIP_MAX_DB: float = 0.0
 
-# Minimum linear power threshold to avoid log(0)
+# ============================================================================
+# Locked SAR normalization constants
+# ============================================================================
+
+VV_MIN_DB: float = -22.98
+VV_MAX_DB: float = 5.63
+
+VH_MIN_DB: float = -32.33
+VH_MAX_DB: float = -2.53
+
+
+# Minimum linear-power threshold used only to avoid log(0).
 _LINEAR_EPS: float = 1e-10
 
 
-# ── GeoTIFF decoder ────────────────────────────────────────────────────────────
+# ============================================================================
+# Validation helpers
+# ============================================================================
 
-def decode_geotiff_response(response_bytes: bytes) -> np.ndarray:
+def _validate_sar_array(arr: np.ndarray) -> None:
     """
-    Parse raw GeoTIFF bytes from the CDSE Processing API into a NumPy array.
+    Validate SAR input shape.
 
-    The Sentinel Hub evalscript in ``sentinel_client.py`` returns a 2-band
-    float32 GeoTIFF where:
-        Band 1 → VV backscatter (linear power)
-        Band 2 → VH backscatter (linear power)
+    Expected:
+        (2, H, W)
+
+    Band order:
+        0 = VV
+        1 = VH
+    """
+
+    if not isinstance(arr, np.ndarray):
+        raise TypeError(
+            f"Expected numpy.ndarray, got {type(arr).__name__}."
+        )
+
+    if arr.ndim != 3:
+        raise ValueError(
+            f"Expected 3-D SAR array (C, H, W), got shape {arr.shape}."
+        )
+
+    if arr.shape[0] != 2:
+        raise ValueError(
+            "Expected exactly 2 SAR channels in order "
+            "(VV, VH), got shape "
+            f"{arr.shape}."
+        )
+
+
+# ============================================================================
+# GeoTIFF decoder
+# ============================================================================
+
+def decode_geotiff_response(
+    response_bytes: bytes,
+    return_validity: bool = False,
+):
+    """
+    Decode a 2-band GeoTIFF response.
 
     Parameters
     ----------
-    response_bytes : bytes
-        Raw GeoTIFF content as returned by ``requests.Response.content``.
+    response_bytes:
+        Raw GeoTIFF bytes.
+
+    return_validity:
+        If True, also return a boolean validity mask with shape (H, W).
 
     Returns
     -------
-    np.ndarray
-        Shape ``(C, H, W)`` with ``C=2``, dtype ``float32``.
-        Values are **linear power** (not yet in dB or normalised).
+    arr:
+        Float32 array with shape (2, H, W).
 
-    Raises
-    ------
-    ImportError
-        If ``rasterio`` is not installed.
-    ValueError
-        If the GeoTIFF cannot be read or has unexpected band count.
+    validity:
+        Boolean array with shape (H, W), returned only when requested.
+
+    Notes
+    -----
+    The CDSE evalscript returns:
+        Band 1 = VV
+        Band 2 = VH
+
+    Validity is initially inferred from finite values.
+
+    Non-positive linear-power pixels are handled later by the normalization
+    function when is_linear=True.
     """
+
     try:
         import rasterio
         from rasterio.io import MemoryFile
     except ImportError as exc:
         raise ImportError(
             "rasterio is required for GeoTIFF decoding. "
-            "Install it with: pip install rasterio"
+            "Install it with: python -m pip install rasterio"
         ) from exc
 
     with MemoryFile(response_bytes) as mem_file:
         with mem_file.open() as dataset:
-            n_bands = dataset.count
-            if n_bands != 2:
+
+            if dataset.count != 2:
                 raise ValueError(
-                    f"Expected 2 bands (VV, VH) in GeoTIFF, got {n_bands}. "
-                    "Check the evalscript in sentinel_client.py."
+                    "Expected exactly 2 bands (VV, VH), "
+                    f"got {dataset.count}."
                 )
 
-            # rasterio returns (bands, rows, cols) — already (C, H, W)
-            arr = dataset.read().astype(np.float32)
+            arr = dataset.read().astype(
+                np.float32,
+                copy=False,
+            )
 
-    n_nan = int(np.sum(np.isnan(arr)))
-    if n_nan > 0:
-        logger.debug(
-            "GeoTIFF decoded: shape=%s  (%d NaN no-data pixels present — "
-            "will be zeroed during normalization)",
-            arr.shape, n_nan,
-        )
-    else:
-        logger.debug(
-            "GeoTIFF decoded: shape=%s  linear_range=[%.4e, %.4e]",
-            arr.shape, float(np.nanmin(arr)), float(np.nanmax(arr)),
-        )
-    return arr  # (2, H, W), float32, linear power
+            # Any non-finite value is invalid.
+            validity = np.all(
+                np.isfinite(arr),
+                axis=0,
+            )
+
+            # Optional raster mask support.
+            try:
+                masks = dataset.read_masks()
+
+                raster_validity = np.all(
+                    masks > 0,
+                    axis=0,
+                )
+
+                validity &= raster_validity
+
+            except Exception:
+                # Some in-memory GeoTIFFs may not expose useful masks.
+                pass
+
+    _validate_sar_array(arr)
+
+    invalid_count = int((~validity).sum())
+
+    logger.debug(
+        "Decoded SAR GeoTIFF: shape=%s invalid_pixels=%d",
+        arr.shape,
+        invalid_count,
+    )
+
+    if return_validity:
+        return arr, validity
+
+    return arr
 
 
-# ── Normalization ──────────────────────────────────────────────────────────────
+# ============================================================================
+# SAR normalization
+# ============================================================================
 
 def normalize_sar_tensor(
     arr: np.ndarray,
-    clip_min_db: float = _DEFAULT_CLIP_MIN_DB,
-    clip_max_db: float = _DEFAULT_CLIP_MAX_DB,
-) -> np.ndarray:
+    is_linear: bool = False,
+    return_validity: bool = False,
+):
     """
-    Normalize a linear-power SAR array to ``[0, 1]`` via dB conversion.
-
-    Steps
-    -----
-    1. Clip values below ``_LINEAR_EPS`` (avoids ``log(0)``).
-    2. Convert to decibels: ``dB = 10 * log10(linear)``.
-    3. Clip the dB values to ``[clip_min_db, clip_max_db]``.
-    4. Min-max normalize to ``[0.0, 1.0]``.
+    Convert SAR to dB when needed and apply locked per-band normalization.
 
     Parameters
     ----------
-    arr : np.ndarray
-        Input array with shape ``(C, H, W)`` in **linear power** units.
-    clip_min_db : float
-        Lower dB clipping bound. Default: ``-30.0`` dB.
-    clip_max_db : float
-        Upper dB clipping bound. Default: ``0.0`` dB.
+    arr:
+        SAR array of shape (2, H, W).
+
+    is_linear:
+        True:
+            Input is linear power (CDSE).
+
+        False:
+            Input is already sigma0 dB (TUM).
+
+    return_validity:
+        If True, return a boolean validity mask alongside the normalized array.
 
     Returns
     -------
-    np.ndarray
-        Float32 array of shape ``(C, H, W)`` with values in ``[0.0, 1.0]``.
+    normalized:
+        Float32 array in [0, 1], shape (2, H, W).
 
-    Notes
-    -----
-    The clipping bounds apply **independently** to each band so that both
-    VV and VH are individually well-normalized despite their different
-    typical dynamic ranges.
+    validity:
+        Boolean array (H, W) when return_validity=True.
+
+    Processing
+    ----------
+    TUM:
+        dB
+        ↓
+        validate finite pixels
+        ↓
+        per-band clipping
+        ↓
+        per-band [0,1]
+
+    CDSE:
+        linear power
+        ↓
+        finite + positive validity check
+        ↓
+        10*log10
+        ↓
+        per-band clipping
+        ↓
+        per-band [0,1]
+
+    Invalid pixels:
+        normalized to 0.0
+        validity mask = False
     """
-    if arr.ndim != 3:
-        raise ValueError(
-            f"Expected 3-D array (C, H, W), got shape {arr.shape}."
+
+    _validate_sar_array(arr)
+
+    arr = np.asarray(
+        arr,
+        dtype=np.float32,
+    )
+
+    # ------------------------------------------------------------------
+    # Determine validity
+    # ------------------------------------------------------------------
+
+    if is_linear:
+
+        # Linear SAR power should be finite and strictly positive.
+        validity = np.all(
+            np.isfinite(arr),
+            axis=0,
+        ) & np.all(
+            arr > 0.0,
+            axis=0,
         )
 
-    # Step 0: Replace NaN / Inf arising from SAR no-data / swath edges.
-    # No-data pixels (NaN) map to 0.0 linear power, which is below _LINEAR_EPS
-    # and therefore clips to clip_min_db → normalizes to 0.0 (black background).
-    n_nan = int(np.sum(np.isnan(arr)))
-    n_inf = int(np.sum(np.isinf(arr)))
-    if n_nan > 0 or n_inf > 0:
-        logger.debug(
-            "SAR array contains %d NaN and %d Inf values "
-            "(swath edges / no-data). Replacing with 0.0.",
-            n_nan, n_inf,
+    else:
+
+        # TUM data is already in dB.
+        validity = np.all(
+            np.isfinite(arr),
+            axis=0,
         )
-    arr = np.nan_to_num(arr, nan=0.0, posinf=0.0, neginf=0.0)
 
-    # Step 1: Floor at epsilon
-    arr_safe = np.clip(arr, _LINEAR_EPS, None)
+    # ------------------------------------------------------------------
+    # Convert linear -> dB only for valid positive values
+    # ------------------------------------------------------------------
 
-    # Step 2: Convert to dB
-    arr_db = 10.0 * np.log10(arr_safe)
+    if is_linear:
 
-    # Step 3: Clip to [min_db, max_db]
-    arr_db = np.clip(arr_db, clip_min_db, clip_max_db)
+        safe = np.where(
+            np.isfinite(arr) & (arr > 0.0),
+            np.maximum(arr, _LINEAR_EPS),
+            _LINEAR_EPS,
+        )
 
-    # Step 4: Min-max scale per-band to [0, 1]
-    db_range = clip_max_db - clip_min_db
-    arr_norm = (arr_db - clip_min_db) / db_range
+        arr_db = (
+            10.0
+            * np.log10(safe)
+        ).astype(
+            np.float32,
+            copy=False,
+        )
 
-    # Ensure float32 output
-    arr_norm = arr_norm.astype(np.float32)
+    else:
+
+        arr_db = arr.astype(
+            np.float32,
+            copy=False,
+        )
+
+    # ------------------------------------------------------------------
+    # Per-band normalization
+    # ------------------------------------------------------------------
+
+    normalized = np.zeros_like(
+        arr_db,
+        dtype=np.float32,
+    )
+
+    # VV
+    vv = np.clip(
+        arr_db[0],
+        VV_MIN_DB,
+        VV_MAX_DB,
+    )
+
+    normalized[0] = (
+        (vv - VV_MIN_DB)
+        / (VV_MAX_DB - VV_MIN_DB)
+    )
+
+    # VH
+    vh = np.clip(
+        arr_db[1],
+        VH_MIN_DB,
+        VH_MAX_DB,
+    )
+
+    normalized[1] = (
+        (vh - VH_MIN_DB)
+        / (VH_MAX_DB - VH_MIN_DB)
+    )
+
+    # ------------------------------------------------------------------
+    # Explicitly zero invalid pixels.
+    # ------------------------------------------------------------------
+
+    normalized[:, ~validity] = 0.0
+
+    normalized = normalized.astype(
+        np.float32,
+        copy=False,
+    )
 
     logger.debug(
-        "SAR normalized: shape=%s  dB_range=[%.1f, %.1f]  "
-        "output_range=[%.4f, %.4f]",
-        arr_norm.shape, clip_min_db, clip_max_db,
-        float(arr_norm.min()), float(arr_norm.max()),
+        "SAR normalization complete: "
+        "shape=%s VV_range=[%.4f, %.4f] "
+        "VH_range=[%.4f, %.4f] "
+        "valid_pixels=%d invalid_pixels=%d",
+        normalized.shape,
+        float(normalized[0].min()),
+        float(normalized[0].max()),
+        float(normalized[1].min()),
+        float(normalized[1].max()),
+        int(validity.sum()),
+        int((~validity).sum()),
     )
-    return arr_norm
+
+    if return_validity:
+        return normalized, validity
+
+    return normalized
 
 
-# ── PyTorch conversion ─────────────────────────────────────────────────────────
+# ============================================================================
+# PyTorch conversion
+# ============================================================================
 
 def to_torch_tensor(arr: np.ndarray):
     """
-    Convert a ``(C, H, W)`` float32 NumPy array to a PyTorch FloatTensor.
-
-    Parameters
-    ----------
-    arr : np.ndarray
-        Shape ``(C, H, W)``, dtype ``float32``.
-
-    Returns
-    -------
-    torch.Tensor
-        Shape ``(C, H, W)``, dtype ``torch.float32``.
-
-    Notes
-    -----
-    Uses ``torch.from_numpy`` which shares memory when the array is
-    C-contiguous — no unnecessary copy.
+    Convert a (C, H, W) NumPy array to torch.float32.
     """
+
     try:
         import torch
     except ImportError as exc:
         raise ImportError(
-            "PyTorch is required for tensor conversion. "
-            "Install it with: pip install torch"
+            "PyTorch is required for tensor conversion."
         ) from exc
 
-    if arr.ndim != 3:
-        raise ValueError(
-            f"Expected 3-D array (C, H, W), got shape {arr.shape}."
-        )
+    _validate_sar_array(arr)
 
-    contiguous = np.ascontiguousarray(arr, dtype=np.float32)
-    return torch.from_numpy(contiguous)
+    contiguous = np.ascontiguousarray(
+        arr,
+        dtype=np.float32,
+    )
+
+    return torch.from_numpy(
+        contiguous
+    )
 
 
-# ── Full pipeline ──────────────────────────────────────────────────────────────
+# ============================================================================
+# Full inference pipeline
+# ============================================================================
 
 def load_sar_pair_for_inference(
     t1_bytes: bytes,
     t2_bytes: bytes,
-    clip_min_db: float = _DEFAULT_CLIP_MIN_DB,
-    clip_max_db: float = _DEFAULT_CLIP_MAX_DB,
+    is_linear: bool = True,
     return_tensors: bool = True,
+    return_validity_mask: bool = False,
 ):
     """
-    Full decode → normalize → (optionally) torch pipeline for a T1/T2 pair.
-
-    This is the convenience entry-point for the inference pipeline.  It
-    takes the raw GeoTIFF byte-strings returned by ``SentinelHubClient``
-    and produces tensors ready to be passed directly into a
-    ``SiameseUNet`` or ``SNUNetCD`` model.
+    Decode, normalize and convert a Sentinel-1 T1/T2 pair.
 
     Parameters
     ----------
-    t1_bytes : bytes
-        Raw GeoTIFF response for the T1 (before) image.
-    t2_bytes : bytes
-        Raw GeoTIFF response for the T2 (after) image.
-    clip_min_db : float
-        Lower dB clipping bound for normalization. Default: ``-30.0``.
-    clip_max_db : float
-        Upper dB clipping bound for normalization. Default: ``0.0``.
-    return_tensors : bool
-        If ``True`` (default), return ``torch.Tensor`` objects.
-        If ``False``, return float32 NumPy arrays.
+    t1_bytes:
+        Raw T1 GeoTIFF bytes.
+
+    t2_bytes:
+        Raw T2 GeoTIFF bytes.
+
+    is_linear:
+        True for CDSE linear-power responses.
+        False for already-dB TUM-like inputs.
+
+    return_tensors:
+        Return torch tensors if True.
+
+    return_validity_mask:
+        If True, return T1/T2 validity masks as well.
 
     Returns
     -------
-    tuple
-        ``(t1, t2)`` where each element has shape ``(C, H, W)`` with
-        ``C=2`` (VV=index 0, VH=index 1).
+    If return_validity_mask=False:
+        (t1, t2)
 
-        Types:
-            - ``torch.Tensor`` when ``return_tensors=True``
-            - ``np.ndarray`` (float32) when ``return_tensors=False``
+    If return_validity_mask=True:
+        (t1, t2, valid_t1, valid_t2)
 
-    Example
-    -------
-    >>> t1_tensor, t2_tensor = load_sar_pair_for_inference(t1_bytes, t2_bytes)
-    >>> t1_tensor.shape
-    torch.Size([2, 512, 512])
-    >>> model = SiameseUNet(in_channels=2)
-    >>> logits = model(t1_tensor.unsqueeze(0), t2_tensor.unsqueeze(0))
+    Tensor/NumPy type depends on return_tensors.
     """
-    # Decode
-    t1_raw = decode_geotiff_response(t1_bytes)
-    t2_raw = decode_geotiff_response(t2_bytes)
 
+    # ---------------------------------------------------------------
+    # Decode
+    # ---------------------------------------------------------------
+
+    t1_raw, t1_valid_decode = decode_geotiff_response(
+        t1_bytes,
+        return_validity=True,
+    )
+
+    t2_raw, t2_valid_decode = decode_geotiff_response(
+        t2_bytes,
+        return_validity=True,
+    )
+
+    # ---------------------------------------------------------------
     # Normalize
-    t1_norm = normalize_sar_tensor(t1_raw, clip_min_db, clip_max_db)
-    t2_norm = normalize_sar_tensor(t2_raw, clip_min_db, clip_max_db)
+    # ---------------------------------------------------------------
+
+    t1_norm, t1_valid = normalize_sar_tensor(
+        t1_raw,
+        is_linear=is_linear,
+        return_validity=True,
+    )
+
+    t2_norm, t2_valid = normalize_sar_tensor(
+        t2_raw,
+        is_linear=is_linear,
+        return_validity=True,
+    )
+
+    # Combine decoder-level and preprocessing-level validity.
+    t1_valid &= t1_valid_decode
+    t2_valid &= t2_valid_decode
+
+    # ---------------------------------------------------------------
+    # Return NumPy if requested
+    # ---------------------------------------------------------------
 
     if not return_tensors:
+
+        if return_validity_mask:
+            return (
+                t1_norm,
+                t2_norm,
+                t1_valid,
+                t2_valid,
+            )
+
         return t1_norm, t2_norm
 
+    # ---------------------------------------------------------------
     # Convert to torch
-    t1_tensor = to_torch_tensor(t1_norm)
-    t2_tensor = to_torch_tensor(t2_norm)
+    # ---------------------------------------------------------------
 
-    return t1_tensor, t2_tensor
+    t1_tensor = to_torch_tensor(
+        t1_norm
+    )
+
+    t2_tensor = to_torch_tensor(
+        t2_norm
+    )
+
+    if not return_validity_mask:
+        return (
+            t1_tensor,
+            t2_tensor,
+        )
+
+    import torch
+
+    t1_valid_tensor = torch.from_numpy(
+        np.ascontiguousarray(
+            t1_valid,
+            dtype=np.bool_,
+        )
+    )
+
+    t2_valid_tensor = torch.from_numpy(
+        np.ascontiguousarray(
+            t2_valid,
+            dtype=np.bool_,
+        )
+    )
+
+    return (
+        t1_tensor,
+        t2_tensor,
+        t1_valid_tensor,
+        t2_valid_tensor,
+    )

@@ -198,7 +198,7 @@ def _build_evalscript() -> str:
         - Collection : sentinel-1-grd
         - Acq. mode  : IW
         - Polarization: DV (VV + VH)
-        - backCoeff  : GAMMA0_TERRAIN
+        - backCoeff  : SIGMA0_ELLIPSOID
         - orthorectify: true
         - demInstance : COPERNICUS_30
     """
@@ -275,7 +275,7 @@ def _build_request_body(
                         "resolution": "HIGH",
                     },
                     "processing": {
-                        "backCoeff": "GAMMA0_TERRAIN",
+                        "backCoeff": "SIGMA0_ELLIPSOID",
                         "orthorectify": True,
                         "demInstance": "COPERNICUS_30",
                     },
@@ -530,8 +530,8 @@ def fetch_sentinel1_pair(
     t1_raw = decode_geotiff_response(t1_bytes)
     t2_raw = decode_geotiff_response(t2_bytes)
 
-    t1_norm = normalize_sar_tensor(t1_raw)
-    t2_norm = normalize_sar_tensor(t2_raw)
+    t1_norm = normalize_sar_tensor(t1_raw, is_linear=True)
+    t2_norm = normalize_sar_tensor(t2_raw, is_linear=True)
 
     logger.info(
         "Pair ready: T1 %s  T2 %s  dtype=%s  range=[%.3f, %.3f]",

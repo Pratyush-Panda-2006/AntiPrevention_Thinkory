@@ -29,13 +29,13 @@ class SharedResNet34Encoder(nn.Module):
         conv1 output is captured BEFORE maxpool.
     """
 
-    def __init__(self, in_channels=3):
+    def __init__(self, in_channels=3, sar_init_mode="average"):
         super().__init__()
 
-        if in_channels != 3:
+        if in_channels not in (2, 3):
             raise ValueError(
                 "ImageNet-pretrained ResNet-34 expects "
-                "3-channel RGB input."
+                "2-channel SAR or 3-channel RGB input."
             )
 
         backbone = resnet34(
@@ -47,6 +47,33 @@ class SharedResNet34Encoder(nn.Module):
         # ---------------------------------------------------------
 
         self.conv1 = backbone.conv1
+
+        if in_channels == 2:
+            old_conv1 = self.conv1
+            self.conv1 = nn.Conv2d(
+                in_channels,
+                old_conv1.out_channels,
+                kernel_size=old_conv1.kernel_size,
+                stride=old_conv1.stride,
+                padding=old_conv1.padding,
+                bias=False,
+            )
+
+            if sar_init_mode == "average":
+                # Averages the ImageNet RGB weights across the channel dimension,
+                # then duplicates that average for the 2 SAR channels.
+                with torch.no_grad():
+                    avg_weights = old_conv1.weight.mean(dim=1, keepdim=True)
+                    self.conv1.weight.data.copy_(avg_weights.repeat(1, 2, 1, 1))
+            elif sar_init_mode == "random":
+                nn.init.kaiming_normal_(
+                    self.conv1.weight,
+                    mode="fan_out",
+                    nonlinearity="relu",
+                )
+            else:
+                raise ValueError(f"Unknown sar_init_mode: {sar_init_mode}")
+
         self.bn1 = backbone.bn1
         self.relu = backbone.relu
         self.maxpool = backbone.maxpool
@@ -131,6 +158,7 @@ class SiameseResNet34UNet(nn.Module):
         self,
         in_channels=3,
         num_classes=1,
+        sar_init_mode="average",
     ):
         super().__init__()
 
@@ -139,7 +167,8 @@ class SiameseResNet34UNet(nn.Module):
         # ---------------------------------------------------------
 
         self.encoder = SharedResNet34Encoder(
-            in_channels=in_channels
+            in_channels=in_channels,
+            sar_init_mode=sar_init_mode,
         )
 
         # ---------------------------------------------------------
