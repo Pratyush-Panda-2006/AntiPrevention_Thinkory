@@ -1,0 +1,25 @@
+{
+  "files": [
+    "multisensor_fusion_CD/",
+    "multisensor_fusion_CD/S1/",
+    "multisensor_fusion_CD/S1/abudhabi/",
+    "multisensor_fusion_CD/S1/abudhabi/imgs_1/",
+    "multisensor_fusion_CD/S1/abudhabi/imgs_1/S1A_IW_GRDH_1SDV_20160218T142406_20160218T142442_010002_00EB50_77FE.tif",
+    "multisensor_fusion_CD/S1/abudhabi/imgs_1/transformed/",
+    "multisensor_fusion_CD/S1/abudhabi/imgs_1/transformed/S1A_IW_GRDH_1SDV_20160218T142406_20160218T142442_010002_00EB50_77FE.tif",
+    "multisensor_fusion_CD/S1/abudhabi/imgs_1/preview/",
+    "multisensor_fusion_CD/S1/abudhabi/imgs_1/preview/0.png",
+    "multisensor_fusion_CD/S1/abudhabi/imgs_2/"
+  ],
+  "sample_info": {
+    "name": "multisensor_fusion_CD/S1/abudhabi/imgs_1/S1A_IW_GRDH_1SDV_20160218T142406_20160218T142442_010002_00EB50_77FE.tif",
+    "crs": "EPSG:32640",
+    "width": 765,
+    "height": 846,
+    "bands": 2,
+    "dtype": "float64",
+    "min": -47.994197762808156,
+    "max": 22.164773110099226,
+    "mean": -17.5392682307654
+  }
+}

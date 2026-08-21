@@ -1,0 +1,43 @@
+{
+  "metadata": {
+    "version": "1.0",
+    "description": "Deterministic scene-level train/validation/test split for OSCD SAR.",
+    "locked": true
+  },
+  "counts": {
+    "train": 11,
+    "validation": 3,
+    "test": 10,
+    "total": 24
+  },
+  "train": [
+    "abudhabi",
+    "aguasclaras",
+    "beihai",
+    "beirut",
+    "bercy",
+    "bordeaux",
+    "chongqing",
+    "hongkong",
+    "milano",
+    "nantes",
+    "rennes"
+  ],
+  "validation": [
+    "dubai",
+    "paris",
+    "pisa"
+  ],
+  "test": [
+    "brasilia",
+    "cupertino",
+    "lasvegas",
+    "montpellier",
+    "mumbai",
+    "norcia",
+    "rio",
+    "saclay_e",
+    "saclay_w",
+    "valencia"
+  ]
+}

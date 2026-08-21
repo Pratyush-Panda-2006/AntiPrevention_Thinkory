@@ -1,0 +1,39 @@
+.env
+.env.*
+!.env.example
+
+.venv/
+venv/
+env/
+
+__pycache__/
+*.py[cod]
+*.pyo
+
+*.zip
+*.tar
+*.tar.gz
+*.7z
+
+data/raw/
+data/sar/tum_oscd/multisensor_fusion_CD/
+data/sar/tum_oscd/oscd_labels/
+
+# Temporary / scratch files
+tmp/
+temp/
+scratch/
+*.tmp
+*.log
+
+# IDE / OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# Python tooling caches
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.ipynb_checkpoints/

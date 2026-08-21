@@ -9,3 +9,5 @@ runs/
 
 # Local environment — never commit real credentials
 .env
+checkpoints/
+runs/
