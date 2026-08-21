@@ -7,7 +7,7 @@ import matplotlib.pyplot as plt
 from PIL import Image
 
 # Ensure src/ is importable
-sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "src"))
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent / "src"))
 
 from data_ingestion.sentinel_client import fetch_sentinel1_pair
 from preprocessing.sar_loader import normalize_sar_tensor, decode_geotiff_response

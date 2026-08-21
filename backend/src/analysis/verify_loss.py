@@ -3,7 +3,7 @@ from pathlib import Path
 
 import torch
 
-PROJECT_ROOT = Path(__file__).resolve().parent.parent
+PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
 
 # Add src to Python path
 sys.path.append(str(PROJECT_ROOT / "src"))
