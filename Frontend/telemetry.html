@@ -1,0 +1,391 @@
+<!DOCTYPE html>
+<html class="dark" lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta content="width=device-width, initial-scale=1.0" name="viewport">
+    <title>NRSC - RISAT-2B Telemetry & System Status</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,700;12..96,800&amp;family=Inter:wght@400;500;600;700;900&amp;family=Playfair+Display:wght@400;700&amp;family=JetBrains+Mono:wght@400;700&amp;display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet">
+    <script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            "colors": {
+                    "background": "#131313",
+                    "tertiary-container": "#c487ff",
+                    "surface": "#131313",
+                    "outline-variant": "#3c4a42",
+                    "primary-fixed-dim": "#4edea3",
+                    "tertiary": "#ddb7ff",
+                    "surface-container-lowest": "#0e0e0e",
+                    "on-secondary-fixed-variant": "#004395",
+                    "secondary-fixed": "#d8e2ff",
+                    "on-secondary-fixed": "#001a42",
+                    "surface-tint": "#4edea3",
+                    "on-primary": "#003824",
+                    "on-tertiary-container": "#550093",
+                    "surface-container": "#201f1f",
+                    "outline": "#86948a",
+                    "on-primary-container": "#00422b",
+                    "surface-variant": "#353534",
+                    "primary": "#4edea3",
+                    "secondary": "#adc6ff",
+                    "surface-container-low": "#1c1b1b",
+                    "on-secondary": "#002e6a",
+                    "on-tertiary-fixed": "#2c0051",
+                    "surface-dim": "#131313",
+                    "secondary-fixed-dim": "#adc6ff",
+                    "tertiary-fixed-dim": "#ddb7ff",
+                    "on-tertiary-fixed-variant": "#6900b3",
+                    "on-error-container": "#ffdad6",
+                    "tertiary-fixed": "#f0dbff",
+                    "inverse-on-surface": "#313030",
+                    "on-error": "#690005",
+                    "on-tertiary": "#490080",
+                    "on-surface": "#e5e2e1",
+                    "inverse-primary": "#006c49",
+                    "error": "#ffb4ab",
+                    "secondary-container": "#0566d9",
+                    "on-background": "#e5e2e1",
+                    "primary-fixed": "#6ffbbe",
+                    "error-container": "#93000a",
+                    "on-primary-fixed": "#002113",
+                    "inverse-surface": "#e5e2e1",
+                    "surface-container-high": "#2a2a2a",
+                    "primary-container": "#10b981",
+                    "on-secondary-container": "#e6ecff",
+                    "surface-container-highest": "#353534",
+                    "on-primary-fixed-variant": "#005236",
+                    "on-surface-variant": "#bbcabf",
+                    "surface-bright": "#3a3939"
+            },
+            "borderRadius": {
+                    "DEFAULT": "0.25rem",
+                    "lg": "0.5rem",
+                    "xl": "0.75rem",
+                    "full": "9999px"
+            },
+            "spacing": {
+                    "base": "4px",
+                    "gutter": "24px",
+                    "md": "24px",
+                    "xl": "80px",
+                    "xs": "8px",
+                    "margin": "32px",
+                    "sm": "16px",
+                    "lg": "48px"
+            },
+            "fontFamily": {
+                    "headline-md": ["Bricolage Grotesque"],
+                    "body-md": ["Inter"],
+                    "body-lg": ["Inter"],
+                    "headline-lg": ["Bricolage Grotesque"],
+                    "headline-lg-mobile": ["Bricolage Grotesque"],
+                    "display-lg": ["Bricolage Grotesque"],
+                    "ui-semibold": ["Inter"],
+                    "accent-italic": ["Playfair Display"],
+                    "mono": ["JetBrains Mono", "monospace"]
+            },
+            "fontSize": {
+                    "headline-md": ["24px", { "lineHeight": "1.2", "letterSpacing": "-0.02em", "fontWeight": "700" }],
+                    "body-md": ["16px", { "lineHeight": "1.5", "fontWeight": "400" }],
+                    "body-lg": ["18px", { "lineHeight": "1.6", "fontWeight": "400" }],
+                    "headline-lg": ["48px", { "lineHeight": "1.1", "letterSpacing": "-0.04em", "fontWeight": "700" }],
+                    "headline-lg-mobile": ["32px", { "lineHeight": "1.1", "letterSpacing": "-0.04em", "fontWeight": "700" }],
+                    "display-lg": ["72px", { "lineHeight": "1.0", "letterSpacing": "-0.05em", "fontWeight": "800" }],
+                    "ui-semibold": ["14px", { "lineHeight": "1.4", "letterSpacing": "0.05em", "fontWeight": "600" }],
+                    "accent-italic": ["20px", { "lineHeight": "1.2", "fontWeight": "400" }]
+            }
+          },
+        }
+      }
+    </script>
+    <style>
+        body { font-family: 'Inter', sans-serif; background-color: #131313; color: #e5e2e1; }
+        .font-jetbrains { font-family: 'JetBrains Mono', monospace; }
+
+        /* 12-column structural grid lines */
+        .structural-grid {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: -1;
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: theme('spacing.sm');
+            padding: 0 theme('spacing.sm');
+        }
+
+        @media (min-width: 768px) {
+            .structural-grid {
+                grid-template-columns: repeat(8, 1fr);
+                gap: theme('spacing.sm');
+                padding: 0 theme('spacing.md');
+            }
+        }
+
+        @media (min-width: 1024px) {
+            .structural-grid {
+                grid-template-columns: repeat(12, 1fr);
+                gap: theme('spacing.gutter');
+                padding: 0 theme('spacing.margin');
+            }
+        }
+
+        .structural-grid > div {
+            border-left: 1px solid rgba(255, 255, 255, 0.15);
+            height: 100%;
+        }
+
+        .structural-grid > div:last-child {
+            border-right: 1px solid rgba(255, 255, 255, 0.15);
+        }
+
+        .glass-panel { background: rgba(10, 10, 10, 0.6); backdrop-filter: blur(40px); border: 1px solid rgba(255, 255, 255, 0.1); }
+        
+        .layout-grid {
+            display: grid;
+            grid-template-columns: repeat(12, minmax(0, 1fr));
+            gap: 24px;
+        }
+        
+        .glitch-hover:hover {
+            animation: glitch-anim 0.3s linear infinite;
+            text-shadow: 2px 0 #ff00c1, -2px 0 #00fff9;
+        }
+
+        @keyframes glitch-anim {
+            0% { clip-path: polygon(0 2%, 100% 2%, 100% 5%, 0 5%); }
+            20% { clip-path: polygon(0 15%, 100% 15%, 100% 15%, 0 15%); }
+            40% { clip-path: polygon(0 10%, 100% 10%, 100% 20%, 0 20%); }
+            60% { clip-path: polygon(0 1%, 100% 1%, 100% 2%, 0 2%); }
+            80% { clip-path: polygon(0 33%, 100% 33%, 100% 33%, 0 33%); }
+            100% { clip-path: polygon(0 44%, 100% 44%, 100% 44%, 0 44%); }
+        }
+
+        /* Circuit Traces */
+        .circuit-trace {
+            position: absolute;
+            background: theme('colors.primary');
+            box-shadow: 0 0 8px theme('colors.primary');
+            opacity: 0;
+            animation: pulse-trace 3s infinite;
+        }
+        @keyframes pulse-trace {
+            0% { opacity: 0; transform: scaleX(0); transform-origin: left; }
+            50% { opacity: 1; transform: scaleX(1); transform-origin: left; }
+            50.1% { transform-origin: right; }
+            100% { opacity: 0; transform: scaleX(0); transform-origin: right; }
+        }
+        
+        .circuit-trace-v {
+            position: absolute;
+            background: theme('colors.primary');
+            box-shadow: 0 0 8px theme('colors.primary');
+            opacity: 0;
+            animation: pulse-trace-v 3s infinite;
+        }
+        @keyframes pulse-trace-v {
+            0% { opacity: 0; transform: scaleY(0); transform-origin: top; }
+            50% { opacity: 1; transform: scaleY(1); transform-origin: top; }
+            50.1% { transform-origin: bottom; }
+            100% { opacity: 0; transform: scaleY(0); transform-origin: bottom; }
+        }
+    </style>
+</head>
+<body class="bg-background text-on-background min-h-screen flex flex-col relative antialiased selection:bg-primary/30 selection:text-primary">
+    <div class="structural-grid">
+        <div></div><div></div><div></div><div></div>
+        <div class="hidden md:block"></div><div class="hidden md:block"></div><div class="hidden md:block"></div><div class="hidden md:block"></div>
+        <div class="hidden lg:block"></div><div class="hidden lg:block"></div><div class="hidden lg:block"></div><div class="hidden lg:block"></div>
+    </div>
+
+    <!-- TopNavBar -->
+    <nav class="fixed top-0 left-0 right-0 z-50 flex justify-between items-center bg-[#0a0a0a]/80 backdrop-blur-2xl border-b border-outline/15 px-6 py-3">
+        <a href="index.html" class="flex items-center gap-2 font-headline-md text-headline-md text-primary tracking-tighter uppercase glitch-hover transition-all">
+            <div class="h-2.5 w-2.5 rounded-full bg-[#10b981] animate-pulse"></div>
+            <span>National Remote Sensing Centre (NRSC)</span>
+        </a>
+        <div class="hidden md:flex gap-6 lg:gap-8 items-center">
+            <a class="font-ui-semibold text-ui-semibold uppercase tracking-widest text-on-surface-variant hover:text-on-surface transition-colors" href="overview.html">OVERVIEW</a>
+            <a class="font-ui-semibold text-ui-semibold uppercase tracking-widest text-on-surface-variant hover:text-on-surface transition-colors" href="studio.html">STUDIO</a>
+            <a class="font-ui-semibold text-ui-semibold uppercase tracking-widest text-on-surface-variant hover:text-on-surface transition-colors" href="analytics.html">ANALYTICS</a>
+            <a class="font-ui-semibold text-ui-semibold uppercase tracking-widest text-on-surface-variant hover:text-on-surface transition-colors" href="explorer.html">EXPLORER</a>
+            <a class="font-ui-semibold text-ui-semibold uppercase tracking-widest text-primary border-b-2 border-primary pb-1" href="telemetry.html">TELEMETRY</a>
+        </div>
+        <div class="flex gap-4 items-center">
+            <a href="telemetry.html" class="flex items-center gap-2 bg-primary/10 border border-primary/20 hover:border-primary/50 transition-all rounded-none px-3 py-1 font-mono text-xs text-primary" title="Live Telemetry Link">
+                <div class="w-2 h-2 rounded-full bg-primary animate-pulse"></div>
+                <span class="uppercase tracking-widest hidden lg:inline">Link Active: 100%</span>
+                <span class="uppercase tracking-widest lg:hidden">Active</span>
+            </a>
+            <div class="flex gap-3">
+                <a href="analytics.html" title="Cluster Alerts">
+                    <span class="material-symbols-outlined text-outline cursor-pointer hover:text-primary transition-colors">notifications</span>
+                </a>
+                <a href="overview.html" title="Command Center Profile">
+                    <span class="material-symbols-outlined text-outline cursor-pointer hover:text-primary transition-colors">account_circle</span>
+                </a>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Content Area -->
+    <main class="flex-1 pt-24 px-margin overflow-y-auto relative z-10 w-full max-w-[1920px] mx-auto pb-32">
+        <header class="mb-10 border-b border-outline/15 pb-4 flex flex-wrap justify-between items-end gap-4">
+            <div>
+                <h1 class="font-headline-lg text-headline-lg text-on-surface uppercase shadow-black drop-shadow-lg glitch-hover transition-all">RISAT-2B TELEMETRY HUB</h1>
+                <p class="font-accent-italic text-accent-italic text-on-surface-variant mt-2 max-w-2xl">Real-time health, link lock &amp; CUDA compute telemetry for NRSC SAR Processing Engines.</p>
+            </div>
+            <div class="flex gap-3">
+                <a href="explorer.html" class="bg-primary text-[#0a0a0a] px-5 py-2 font-ui-semibold text-xs uppercase tracking-widest hover:bg-primary-fixed-dim transition-all flex items-center gap-1.5">
+                    <span class="material-symbols-outlined text-[16px]">satellite_alt</span> Return to Explorer
+                </a>
+                <a href="studio.html" class="bg-surface-container-high border border-outline/30 text-on-surface hover:text-primary px-5 py-2 font-ui-semibold text-xs uppercase tracking-widest transition-all flex items-center gap-1.5">
+                    <span class="material-symbols-outlined text-[16px]">view_in_ar</span> Open 3D Studio
+                </a>
+            </div>
+        </header>
+
+        <div class="layout-grid">
+            <!-- Connectivity Panel -->
+            <div class="glass-panel p-gutter rounded-none col-span-12 lg:col-span-4 flex flex-col justify-between">
+                <div>
+                    <div class="flex items-center justify-between mb-6">
+                        <h3 class="font-ui-semibold text-ui-semibold text-outline uppercase tracking-widest">Connectivity</h3>
+                        <span class="material-symbols-outlined text-primary" data-icon="satellite_alt">satellite_alt</span>
+                    </div>
+                    <div class="mb-4">
+                        <span class="font-mono text-xs text-on-surface-variant block mb-1 uppercase tracking-widest">Active Link</span>
+                        <span class="font-headline-md text-headline-md text-on-surface font-mono">ISRO RISAT-2B</span>
+                        <span class="font-mono text-xs text-on-surface-variant block mt-2 uppercase tracking-widest">Station Lock: ISTRAC, Bengaluru</span>
+                        <span class="font-mono text-xs text-on-surface-variant block mt-2 uppercase tracking-widest">Last Update: <span id="ist-time1">--:--:--</span> IST</span>
+                    </div>
+                </div>
+                <div class="flex items-end justify-between border-t border-outline/15 pt-4 mt-4 border-dotted">
+                    <div>
+                        <span class="font-mono text-xs text-on-surface-variant block mb-1 uppercase tracking-widest">Downlink Latency</span>
+                        <span class="text-4xl text-[#ff00c1] font-jetbrains tracking-tight" id="latency-readout">122ms</span>
+                    </div>
+                    <div class="h-8 w-8 rounded-none border border-[#10b981] flex items-center justify-center bg-[#10b981]/20">
+                        <span class="h-2 w-2 bg-[#10b981] rounded-none animate-pulse"></span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- AI Engine Specs -->
+            <div class="glass-panel p-gutter rounded-none col-span-12 lg:col-span-8 relative overflow-hidden group">
+                <div class="circuit-trace h-[2px] w-1/3 top-0 left-10"></div>
+                <div class="circuit-trace h-[2px] w-1/4 bottom-0 right-20" style="animation-delay: 1.5s;"></div>
+                <div class="circuit-trace-v w-[2px] h-1/2 top-10 right-0" style="animation-delay: 0.75s;"></div>
+                <div class="circuit-trace-v w-[2px] h-1/3 bottom-10 left-0" style="animation-delay: 2.25s;"></div>
+                <div class="relative z-10">
+                    <div class="flex items-center justify-between mb-6">
+                        <h3 class="font-ui-semibold text-ui-semibold text-outline uppercase tracking-widest">AI Compute Node</h3>
+                        <span class="material-symbols-outlined text-outline" data-icon="memory_alt">memory_alt</span>
+                    </div>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div class="bg-surface-container-low p-4 border border-outline/15 relative">
+                            <span class="font-mono text-xs text-on-surface-variant block mb-2 uppercase tracking-widest">Framework</span>
+                            <span class="font-headline-md text-headline-md text-on-surface font-mono">PyTorch 2.x (SNUNet)</span>
+                        </div>
+                        <div class="bg-surface-container-low p-4 border border-outline/15 relative">
+                            <span class="font-mono text-xs text-on-surface-variant block mb-2 uppercase tracking-widest">Hardware Accelerator</span>
+                            <span class="font-headline-md text-headline-md text-on-surface font-mono">CUDA: NVIDIA RTX 3050</span>
+                        </div>
+                    </div>
+                    <div class="mt-6 border-t border-outline/15 pt-4 border-dotted">
+                        <div class="flex justify-between items-center mb-2">
+                            <span class="font-mono text-xs text-on-surface-variant uppercase tracking-widest">GPU VRAM Usage</span>
+                            <span class="text-xl text-[#00fff9] font-jetbrains tracking-tight" id="vram-readout">1.3 GB / 6.0 GB</span>
+                        </div>
+                        <div class="w-full bg-surface-container-highest border border-outline/15 h-3">
+                            <div class="bg-[#00fff9] h-full transition-all duration-300" id="gpu-bar" style="width: 21.7687%;"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Historical Uptime Chart -->
+            <div class="glass-panel p-gutter rounded-none col-span-12 mt-2 h-64 flex flex-col relative overflow-hidden">
+                <div class="relative z-10 flex flex-col h-full">
+                    <div class="flex items-center justify-between mb-4 border-b border-outline/15 pb-2">
+                        <h3 class="font-ui-semibold text-ui-semibold text-outline uppercase tracking-widest">System Uptime & Satellite Telemetry (7 Days)</h3>
+                        <span class="font-headline-md text-headline-md text-primary font-mono">99.98%</span>
+                    </div>
+                    <div class="flex-1 flex items-end space-x-1">
+                        <!-- Chart Bars -->
+                        <div class="w-full h-full flex items-end space-x-2">
+                            <div class="bg-surface-container-highest border border-outline/15 w-full h-[90%] hover:bg-primary/50 transition-colors flex items-end justify-center p-1"><span class="text-[10px] font-mono text-outline">T-7</span></div>
+                            <div class="bg-surface-container-highest border border-outline/15 w-full h-[95%] hover:bg-primary/50 transition-colors flex items-end justify-center p-1"><span class="text-[10px] font-mono text-outline">T-6</span></div>
+                            <div class="bg-surface-container-highest border border-outline/15 w-full h-[100%] hover:bg-primary/50 transition-colors flex items-end justify-center p-1"><span class="text-[10px] font-mono text-outline">T-5</span></div>
+                            <div class="bg-surface-container-highest border border-outline/15 w-full h-[88%] hover:bg-primary/50 transition-colors flex items-end justify-center p-1"><span class="text-[10px] font-mono text-outline">T-4</span></div>
+                            <div class="bg-error/20 w-full h-[65%] hover:bg-error/50 transition-colors border border-error flex items-end justify-center p-1"><span class="text-[10px] font-mono text-error">T-3</span></div>
+                            <div class="bg-surface-container-highest border border-outline/15 w-full h-[94%] hover:bg-primary/50 transition-colors flex items-end justify-center p-1"><span class="text-[10px] font-mono text-outline">T-2</span></div>
+                            <div class="bg-surface-container-highest border border-outline/15 w-full h-[99%] hover:bg-primary/50 transition-colors flex items-end justify-center p-1"><span class="text-[10px] font-mono text-primary">T-1</span></div>
+                        </div>
+                    </div>
+                    <div class="flex justify-between mt-2 font-mono text-xs text-outline tracking-widest uppercase">
+                        <span>T-7d (Nominal)</span>
+                        <span>Today (<span id="ist-time2">--:--:--</span> IST)</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Footer -->
+    <footer class="w-full py-12 px-margin grid grid-cols-1 md:grid-cols-12 gap-gutter bg-surface-dim border-t border-outline/15 relative overflow-hidden z-40">
+        <div class="col-span-1 md:col-span-6 flex flex-col justify-between">
+            <div class="font-headline-md text-headline-md text-primary mb-4 glitch-hover transition-all">National Remote Sensing Centre (NRSC)</div>
+            <p class="font-mono text-xs text-outline tracking-widest uppercase">All Rights Reserved</p>
+        </div>
+        <div class="col-span-1 md:col-span-6 flex justify-end gap-6 font-ui-semibold text-ui-semibold uppercase flex-wrap">
+            <a class="text-outline hover:text-primary transition-colors" href="overview.html">[SYSTEM OVERVIEW]</a>
+            <a class="text-outline hover:text-primary transition-colors" href="studio.html">[3D STUDIO]</a>
+            <a class="text-outline hover:text-primary transition-colors" href="analytics.html">[CLUSTER AUDIT]</a>
+            <a class="text-outline hover:text-primary transition-colors" href="telemetry.html">[TELEMETRY]</a>
+        </div>
+    </footer>
+
+    <script>
+        // IST Time Update
+        function updateTime() {
+            const now = new Date();
+            const options = { timeZone: 'Asia/Kolkata', hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit' };
+            const istTime = now.toLocaleTimeString('en-IN', options);
+            const el1 = document.getElementById('ist-time1');
+            const el2 = document.getElementById('ist-time2');
+            if (el1) el1.innerText = istTime;
+            if (el2) el2.innerText = istTime;
+        }
+        updateTime();
+        setInterval(updateTime, 1000);
+
+        // Live GPU & Network Jitter Script
+        setInterval(() => {
+            const latencyElement = document.getElementById('latency-readout');
+            if (latencyElement) {
+                const jitter = Math.floor(Math.random() * 7) + 118; 
+                latencyElement.innerText = `${jitter}ms`;
+            }
+
+            const gpuBar = document.getElementById('gpu-bar');
+            const vramReadout = document.getElementById('vram-readout');
+            if (gpuBar && vramReadout) {
+                let basePercent = 20 + (Math.random() * 15 - 5); 
+                basePercent = Math.max(5, Math.min(basePercent, 95));
+                gpuBar.style.width = `${basePercent}%`;
+                const currentVram = (basePercent / 100) * 6.0;
+                vramReadout.innerText = `${currentVram.toFixed(1)} GB / 6.0 GB`;
+            }
+        }, 800);
+    </script>
+</body>
+</html>

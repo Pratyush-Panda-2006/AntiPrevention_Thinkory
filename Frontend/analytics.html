@@ -1,0 +1,539 @@
+<!DOCTYPE html>
+<html class="dark" lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta content="width=device-width, initial-scale=1.0" name="viewport">
+    <title>Orbital Intel - Cluster Inspector & Analytics</title>
+    <!-- Tailwind CSS & GSAP -->
+    <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
+    <link href="https://fonts.googleapis.com" rel="preconnect">
+    <link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect">
+    <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,700;12..96,800&amp;family=Inter:wght@400;600;700;900&amp;family=Playfair+Display:ital@0;1&amp;family=JetBrains+Mono:wght@400;500;700&amp;display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet">
+    <script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "background": "#131313",
+                        "tertiary-container": "#c487ff",
+                        "surface": "#131313",
+                        "outline-variant": "#3c4a42",
+                        "primary-fixed-dim": "#4edea3",
+                        "tertiary": "#ddb7ff",
+                        "surface-container-lowest": "#0e0e0e",
+                        "on-secondary-fixed-variant": "#004395",
+                        "secondary-fixed": "#d8e2ff",
+                        "on-secondary-fixed": "#001a42",
+                        "surface-tint": "#4edea3",
+                        "on-primary": "#003824",
+                        "on-tertiary-container": "#550093",
+                        "surface-container": "#201f1f",
+                        "outline": "#86948a",
+                        "on-primary-container": "#00422b",
+                        "surface-variant": "#353534",
+                        "primary": "#4edea3",
+                        "secondary": "#adc6ff",
+                        "surface-container-low": "#1c1b1b",
+                        "on-secondary": "#002e6a",
+                        "on-tertiary-fixed": "#2c0051",
+                        "surface-dim": "#131313",
+                        "secondary-fixed-dim": "#adc6ff",
+                        "tertiary-fixed-dim": "#ddb7ff",
+                        "on-tertiary-fixed-variant": "#6900b3",
+                        "on-error-container": "#ffdad6",
+                        "tertiary-fixed": "#f0dbff",
+                        "inverse-on-surface": "#313030",
+                        "on-error": "#690005",
+                        "on-tertiary": "#490080",
+                        "on-surface": "#e5e2e1",
+                        "inverse-primary": "#006c49",
+                        "error": "#ffb4ab",
+                        "secondary-container": "#0566d9",
+                        "on-background": "#e5e2e1",
+                        "primary-fixed": "#6ffbbe",
+                        "error-container": "#93000a",
+                        "on-primary-fixed": "#002113",
+                        "inverse-surface": "#e5e2e1",
+                        "surface-container-high": "#2a2a2a",
+                        "primary-container": "#10b981",
+                        "on-secondary-container": "#e6ecff",
+                        "surface-container-highest": "#353534",
+                        "on-primary-fixed-variant": "#005236",
+                        "on-surface-variant": "#bbcabf",
+                        "surface-bright": "#3a3939"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "base": "4px",
+                        "gutter": "24px",
+                        "md": "24px",
+                        "xl": "80px",
+                        "xs": "8px",
+                        "margin": "32px",
+                        "sm": "16px",
+                        "lg": "48px"
+                    },
+                    "fontFamily": {
+                        "headline-md": ["Bricolage Grotesque"],
+                        "body-md": ["Inter"],
+                        "body-lg": ["Inter"],
+                        "headline-lg": ["Bricolage Grotesque"],
+                        "headline-lg-mobile": ["Bricolage Grotesque"],
+                        "display-lg": ["Bricolage Grotesque"],
+                        "ui-semibold": ["Inter"],
+                        "accent-italic": ["Playfair Display"]
+                    },
+                    "fontSize": {
+                        "headline-md": ["24px", { "lineHeight": "1.2", "letterSpacing": "-0.02em", "fontWeight": "700" }],
+                        "body-md": ["16px", { "lineHeight": "1.5", "fontWeight": "400" }],
+                        "body-lg": ["18px", { "lineHeight": "1.6", "fontWeight": "400" }],
+                        "headline-lg": ["48px", { "lineHeight": "1.1", "letterSpacing": "-0.04em", "fontWeight": "700" }],
+                        "headline-lg-mobile": ["32px", { "lineHeight": "1.1", "letterSpacing": "-0.04em", "fontWeight": "700" }],
+                        "display-lg": ["72px", { "lineHeight": "1.0", "letterSpacing": "-0.05em", "fontWeight": "800" }],
+                        "ui-semibold": ["14px", { "lineHeight": "1.4", "letterSpacing": "0.05em", "fontWeight": "600" }],
+                        "accent-italic": ["20px", { "lineHeight": "1.2", "fontWeight": "400" }]
+                    }
+                },
+            },
+        }
+    </script>
+    <style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .material-symbols-outlined.fill {
+            font-variation-settings: 'FILL' 1, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        /* Custom scrollbar */
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #3c4a42; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #86948a; }
+        
+        /* Persistent 4% opacity fractal noise grain */
+        .grain-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            pointer-events: none;
+            z-index: 9999;
+            background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E");
+            opacity: 0.04;
+        }
+
+        /* 12-column structural grid lines */
+        .structural-grid {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 0;
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: theme('spacing.sm');
+            padding: 0 theme('spacing.sm');
+        }
+
+        @media (min-width: 768px) {
+            .structural-grid {
+                grid-template-columns: repeat(8, 1fr);
+                gap: theme('spacing.sm');
+                padding: 0 theme('spacing.md');
+            }
+        }
+
+        @media (min-width: 1024px) {
+            .structural-grid {
+                grid-template-columns: repeat(12, 1fr);
+                gap: theme('spacing.gutter');
+                padding: 0 theme('spacing.margin');
+            }
+        }
+
+        .structural-grid > div {
+            border-left: 1px solid rgba(255, 255, 255, 0.15); 
+            height: 100%;
+        }
+
+        .structural-grid > div:last-child {
+            border-right: 1px solid rgba(255, 255, 255, 0.15);
+        }
+
+        @keyframes pulse-tactical {
+            0%, 100% { opacity: 1; box-shadow: 0 0 0 0 rgba(78, 222, 163, 0.7); }
+            50% { opacity: 0.8; box-shadow: 0 0 0 6px rgba(78, 222, 163, 0); }
+        }
+        .pulse-tactical {
+            animation: pulse-tactical 1.5s infinite cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        
+        .scanline {
+            width: 100%;
+            height: 4px;
+            background: linear-gradient(to bottom, rgba(78, 222, 163, 0), rgba(78, 222, 163, 0.8), rgba(78, 222, 163, 0));
+            position: absolute;
+            left: 0;
+            top: -10px;
+            z-index: 20;
+            pointer-events: none;
+            opacity: 0;
+            box-shadow: 0 0 10px rgba(78, 222, 163, 0.5);
+        }
+    </style>
+</head>
+<body class="bg-background text-on-surface font-body-md h-screen w-screen overflow-hidden flex flex-col relative">
+    <div class="grain-overlay"></div>
+    <div class="structural-grid">
+        <div></div><div></div><div></div><div></div>
+        <div class="hidden md:block"></div><div class="hidden md:block"></div><div class="hidden md:block"></div><div class="hidden md:block"></div>
+        <div class="hidden lg:block"></div><div class="hidden lg:block"></div><div class="hidden lg:block"></div><div class="hidden lg:block"></div>
+    </div>
+
+    <!-- TopNavBar -->
+    <nav class="fixed top-0 left-0 right-0 z-50 flex justify-between items-center bg-[#0a0a0a]/80 backdrop-blur-2xl border-b border-outline/15 px-6 py-3">
+        <a href="index.html" class="font-headline-md text-headline-md text-primary tracking-tighter uppercase flex items-center gap-2 hover:opacity-90 transition-opacity">
+            <span class="w-2.5 h-2.5 rounded-full bg-primary animate-pulse"></span>
+            <span>National Remote Sensing Centre (NRSC)</span>
+        </a>
+        <div class="hidden md:flex gap-6 lg:gap-8 items-center">
+            <a class="font-ui-semibold text-ui-semibold uppercase tracking-widest text-on-surface-variant hover:text-on-surface transition-colors" href="overview.html">OVERVIEW</a>
+            <a class="font-ui-semibold text-ui-semibold uppercase tracking-widest text-on-surface-variant hover:text-on-surface transition-colors" href="studio.html">STUDIO</a>
+            <a class="font-ui-semibold text-ui-semibold uppercase tracking-widest text-primary border-b-2 border-primary pb-1" href="analytics.html">ANALYTICS</a>
+            <a class="font-ui-semibold text-ui-semibold uppercase tracking-widest text-on-surface-variant hover:text-on-surface transition-colors" href="explorer.html">EXPLORER</a>
+            <a class="font-ui-semibold text-ui-semibold uppercase tracking-widest text-on-surface-variant hover:text-on-surface transition-colors" href="telemetry.html">TELEMETRY</a>
+        </div>
+        <div class="flex gap-4 items-center">
+            <a href="telemetry.html" class="flex items-center gap-2 bg-primary/10 border border-primary/20 hover:border-primary/50 transition-all rounded-none px-3 py-1 font-mono text-xs text-primary" title="View Real-Time Telemetry">
+                <div class="w-2 h-2 rounded-full bg-primary animate-pulse"></div>
+                <span class="uppercase tracking-widest hidden lg:inline">CDSE Satellite Link: Connected</span>
+                <span class="uppercase tracking-widest lg:hidden">Active</span>
+            </a>
+            <div class="flex gap-3">
+                <a href="analytics.html" title="Cluster Alerts">
+                    <span class="material-symbols-outlined text-outline cursor-pointer hover:text-primary transition-colors">notifications</span>
+                </a>
+                <a href="overview.html" title="Command Center Profile">
+                    <span class="material-symbols-outlined text-outline cursor-pointer hover:text-primary transition-colors">account_circle</span>
+                </a>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Content Wrapper -->
+    <main class="flex-1 flex flex-col relative w-full h-full bg-background pt-[64px] pb-10 overflow-hidden">
+        <!-- Map Canvas / Background -->
+        <div class="absolute inset-0 w-full h-full z-0 pointer-events-none opacity-40 grayscale" data-alt="Tactical emerald lines India border map" data-location="India" id="map-canvas" style="background-image: url('https://lh3.googleusercontent.com/aida-public/AB6AXuClXdbMjHTOAiCnCdiv8wRodrj_MWkcsmD56kfuRQIEsFZGjxpST_duEZHOQ6TOQ_H96wVlVYfrguEiOOjrQuTiSMSXI1PLI0j80mGqv45izoe4R42R2SDpgvrffRhnrcM4T2ViQUuHsu7alaJvGjUkSQyzwqT6cioiFMeB55zhk9WgX40TItzMAU9TDgF9cnqvP0ND8YbsF3vgSfYtIHKQiFdg0KQq4lE1az8a8AUopA_0tGPB8v6T'); background-size: cover; background-position: center;"></div>
+        <div class="absolute inset-0 bg-background/60 z-0 pointer-events-none mix-blend-multiply"></div>
+        
+        <!-- Content Area with 12-column grid structure -->
+        <div class="relative z-10 flex-1 flex flex-col mb-4 p-margin overflow-hidden h-full pointer-events-none">
+            <div class="w-full h-full grid grid-cols-12 gap-gutter pointer-events-auto">
+                <!-- Floating Metrics Strip (Left side) -->
+                <div class="col-span-12 lg:col-span-3 flex flex-col gap-4 z-20">
+                    <div class="bg-[#0a0a0a]/60 backdrop-blur-2xl border border-outline/15 rounded-none p-5 relative">
+                        <div class="flex items-center gap-2 mb-2">
+                            <span class="material-symbols-outlined text-on-surface-variant text-sm" data-icon="landscape">landscape</span>
+                            <span class="font-ui-semibold text-[10px] uppercase tracking-widest text-outline">Total Area Analyzed</span>
+                        </div>
+                        <div class="font-headline-md text-headline-md text-primary font-['JetBrains_Mono']">1,204.5 <span class="text-sm font-normal text-on-surface-variant font-['Inter']">km²</span></div>
+                    </div>
+                    <div class="bg-[#0a0a0a]/60 backdrop-blur-2xl border border-outline/15 rounded-none p-5 relative overflow-hidden">
+                        <div class="absolute left-0 top-0 w-1 h-full bg-primary"></div>
+                        <div class="flex items-center gap-2 mb-2">
+                            <span class="material-symbols-outlined text-primary text-sm" data-icon="change_history">change_history</span>
+                            <span class="font-ui-semibold text-[10px] uppercase tracking-widest text-outline">Changed Area</span>
+                        </div>
+                        <div class="font-headline-md text-headline-md text-primary font-['JetBrains_Mono']">42.8 <span class="text-sm font-normal text-primary/80 font-['Inter']">km²</span> <span class="ml-2 text-sm font-normal text-primary/90 font-['Inter']">(3.5%)</span></div>
+                    </div>
+                    <div class="bg-[#0a0a0a]/60 backdrop-blur-2xl border border-outline/15 rounded-none p-5 relative" id="clusters-detected-card">
+                        <div class="flex items-center gap-2 mb-2">
+                            <span class="material-symbols-outlined text-primary text-sm" data-icon="radar">radar</span>
+                            <span class="font-ui-semibold text-[10px] uppercase tracking-widest text-outline">Clusters Detected</span>
+                        </div>
+                        <div class="font-headline-md text-headline-md text-primary font-['JetBrains_Mono']" id="clusters-detected-val">87 <span class="text-sm font-normal text-on-surface-variant font-['Inter']">entities</span></div>
+                    </div>
+                    <div class="bg-[#0a0a0a]/60 backdrop-blur-2xl border border-outline/15 rounded-none p-5 relative">
+                        <div class="flex items-center gap-2 mb-2">
+                            <span class="material-symbols-outlined text-on-surface-variant text-sm" data-icon="speed">speed</span>
+                            <span class="font-ui-semibold text-[10px] uppercase tracking-widest text-outline">Inference Time</span>
+                        </div>
+                        <div class="font-headline-md text-headline-md text-primary font-['JetBrains_Mono']">0.84 <span class="text-sm font-normal text-on-surface-variant font-['Inter']">s</span></div>
+                    </div>
+                    <!-- Quick Navigation Card -->
+                    <div class="bg-[#0a0a0a]/60 backdrop-blur-2xl border border-outline/15 rounded-none p-4 mt-auto">
+                        <span class="font-mono text-[10px] text-outline uppercase tracking-widest block mb-2">Direct Action Links</span>
+                        <div class="flex flex-col gap-2">
+                            <a href="studio.html" class="flex items-center justify-between text-xs font-mono text-on-surface hover:text-primary p-2 bg-surface-container-high/40 border border-outline/20 hover:border-primary/40 transition-colors">
+                                <span>Inspect in 3D Studio</span>
+                                <span class="material-symbols-outlined text-[14px]">arrow_forward</span>
+                            </a>
+                            <a href="explorer.html" class="flex items-center justify-between text-xs font-mono text-on-surface hover:text-primary p-2 bg-surface-container-high/40 border border-outline/20 hover:border-primary/40 transition-colors">
+                                <span>Modify Acquisition Box</span>
+                                <span class="material-symbols-outlined text-[14px]">arrow_forward</span>
+                            </a>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Inspector Panel (Right side) -->
+                <section class="col-span-12 lg:col-span-9 h-full flex flex-col bg-[#0a0a0a]/60 backdrop-blur-2xl border border-outline/15 rounded-none overflow-hidden relative z-20 pointer-events-auto">
+                    <div class="scanline" id="scanline"></div>
+                    <!-- Panel Header -->
+                    <div class="p-5 border-b border-outline/15 flex flex-wrap justify-between items-center gap-3 bg-surface-container-low/40">
+                        <div>
+                            <h2 class="font-headline-md text-headline-md text-on-surface flex items-center gap-2 uppercase tracking-tight">
+                                <span class="material-symbols-outlined text-primary" data-icon="insights">insights</span>
+                                Cluster Inspector
+                            </h2>
+                            <p class="font-mono text-xs text-outline mt-1 uppercase tracking-widest">Select a row to fly to target coordinates.</p>
+                        </div>
+                        <!-- Export Actions -->
+                        <div class="flex items-center gap-2 bg-surface-container-high/50 border border-outline/15 rounded-none p-1">
+                            <button onclick="alert('Exporting Cluster Audit as PDF...')" class="px-3 py-1.5 hover:bg-surface-variant text-outline hover:text-primary transition-colors font-mono text-[10px] uppercase tracking-widest flex items-center gap-1 group">
+                                <span class="material-symbols-outlined text-[16px] group-hover:text-primary transition-colors" data-icon="picture_as_pdf">picture_as_pdf</span> PDF
+                            </button>
+                            <div class="w-px h-4 bg-outline/30"></div>
+                            <button onclick="alert('Generating GeoJSON vector bounds...')" class="px-3 py-1.5 hover:bg-surface-variant text-outline hover:text-primary transition-colors font-mono text-[10px] uppercase tracking-widest flex items-center gap-1 group">
+                                <span class="material-symbols-outlined text-[16px] group-hover:text-primary transition-colors" data-icon="public">public</span> GeoJSON
+                            </button>
+                            <div class="w-px h-4 bg-outline/30"></div>
+                            <button onclick="alert('Exporting cluster metrics table CSV...')" class="px-3 py-1.5 hover:bg-surface-variant text-outline hover:text-primary transition-colors font-mono text-[10px] uppercase tracking-widest flex items-center gap-1 group">
+                                <span class="material-symbols-outlined text-[16px] group-hover:text-primary transition-colors" data-icon="table_chart">table_chart</span> CSV
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Panel Filters/Toolbar -->
+                    <div class="p-3 border-b border-outline/15 bg-surface-container-low/20 flex flex-wrap gap-2 items-center">
+                        <span class="font-mono text-[10px] uppercase tracking-widest text-outline mr-2">Filters:</span>
+                        <button class="filter-btn px-3 py-1 rounded-none border border-primary/50 bg-primary/10 text-primary font-mono text-xs hover:bg-primary/20 transition-colors uppercase">Critical (12)</button>
+                        <button class="filter-btn px-3 py-1 rounded-none border border-tertiary-container/50 bg-tertiary-container/10 text-tertiary-container font-mono text-xs hover:bg-tertiary-container/20 transition-colors uppercase">High (34)</button>
+                        <button class="filter-btn px-3 py-1 rounded-none border border-outline/30 text-outline font-mono text-xs hover:bg-surface-variant/50 transition-colors uppercase">Medium (28)</button>
+                        <div class="flex-1"></div>
+                        <button class="px-3 py-1 rounded-none border border-outline/30 text-outline font-mono text-[10px] hover:bg-surface-variant/50 transition-colors uppercase tracking-widest" id="zero-toggle">Simulate Zero-Detection</button>
+                    </div>
+
+                    <!-- Interactive Table -->
+                    <div class="flex-1 overflow-auto relative" id="table-container">
+                        <div class="hidden absolute inset-0 flex items-center justify-center bg-surface-container-low/80 backdrop-blur-md z-20" id="zero-state">
+                            <span class="font-['JetBrains_Mono'] text-outline text-sm tracking-widest">[NO ANOMALIES DETECTED // 0 CLUSTERS FOUND]</span>
+                        </div>
+                        <table class="w-full text-left border-collapse font-mono text-sm">
+                            <thead class="sticky top-0 bg-surface-container-low/80 backdrop-blur-md border-b border-outline/15 z-10">
+                                <tr>
+                                    <th class="py-3 px-6 text-[10px] uppercase tracking-widest text-outline font-normal">ID</th>
+                                    <th class="py-3 px-6 text-[10px] uppercase tracking-widest text-outline font-normal">Severity</th>
+                                    <th class="py-3 px-6 text-[10px] uppercase tracking-widest text-outline font-normal text-right">Area (ha)</th>
+                                    <th class="py-3 px-6 text-[10px] uppercase tracking-widest text-outline font-normal text-right">Mean Prob</th>
+                                    <th class="py-3 px-6 text-[10px] uppercase tracking-widest text-outline font-normal">Centroid</th>
+                                    <th class="py-3 px-6 text-[10px] uppercase tracking-widest text-outline font-normal">Action</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-outline/10 cursor-pointer">
+                                <tr class="hover:bg-primary/5 transition-colors group bg-primary/10" data-lat="28.6139" data-lng="77.2090">
+                                    <td class="py-3 px-6 text-on-surface font-semibold group-hover:text-primary font-['JetBrains_Mono']">CL-892</td>
+                                    <td class="py-3 px-6 font-['JetBrains_Mono']">
+                                        <div class="inline-flex items-center gap-1.5 px-2 py-0.5 border border-primary bg-primary/10 text-primary text-[10px] uppercase tracking-widest font-bold">
+                                            <div class="w-1.5 h-1.5 rounded-full bg-primary pulse-tactical"></div> Critical
+                                        </div>
+                                    </td>
+                                    <td class="py-3 px-6 text-right text-on-surface font-['JetBrains_Mono']">14.2</td>
+                                    <td class="py-3 px-6 text-right text-on-surface font-['JetBrains_Mono']">0.94</td>
+                                    <td class="py-3 px-6 text-on-surface-variant text-xs font-['JetBrains_Mono']">28.6139° N, 77.2090° E (Delhi)</td>
+                                    <td class="py-3 px-6"><a href="studio.html" class="text-primary hover:underline text-xs">Studio →</a></td>
+                                </tr>
+                                <tr class="hover:bg-primary/5 transition-colors group" data-lat="19.0760" data-lng="72.8777">
+                                    <td class="py-3 px-6 text-on-surface font-semibold group-hover:text-primary font-['JetBrains_Mono']">CL-891</td>
+                                    <td class="py-3 px-6 font-['JetBrains_Mono']">
+                                        <div class="inline-flex items-center gap-1.5 px-2 py-0.5 border border-primary bg-primary/10 text-primary text-[10px] uppercase tracking-widest font-bold">
+                                            <div class="w-1.5 h-1.5 rounded-full bg-primary pulse-tactical"></div> Critical
+                                        </div>
+                                    </td>
+                                    <td class="py-3 px-6 text-right text-on-surface font-['JetBrains_Mono']">8.7</td>
+                                    <td class="py-3 px-6 text-right text-on-surface font-['JetBrains_Mono']">0.91</td>
+                                    <td class="py-3 px-6 text-on-surface-variant text-xs font-['JetBrains_Mono']">19.0760° N, 72.8777° E (Mumbai)</td>
+                                    <td class="py-3 px-6"><a href="studio.html" class="text-primary hover:underline text-xs">Studio →</a></td>
+                                </tr>
+                                <tr class="hover:bg-primary/5 transition-colors group" data-lat="12.9716" data-lng="77.5946">
+                                    <td class="py-3 px-6 text-on-surface font-semibold group-hover:text-primary font-['JetBrains_Mono']">CL-888</td>
+                                    <td class="py-3 px-6 font-['JetBrains_Mono']">
+                                        <div class="inline-flex items-center gap-1.5 px-2 py-0.5 border border-tertiary-container/50 bg-tertiary-container/10 text-tertiary-container text-[10px] uppercase tracking-widest font-bold">
+                                            <div class="w-1.5 h-1.5 rounded-full bg-tertiary-container"></div> High
+                                        </div>
+                                    </td>
+                                    <td class="py-3 px-6 text-right text-on-surface font-['JetBrains_Mono']">11.5</td>
+                                    <td class="py-3 px-6 text-right text-on-surface font-['JetBrains_Mono']">0.86</td>
+                                    <td class="py-3 px-6 text-on-surface-variant text-xs font-['JetBrains_Mono']">12.9716° N, 77.5946° E (Bengaluru)</td>
+                                    <td class="py-3 px-6"><a href="studio.html" class="text-primary hover:underline text-xs">Studio →</a></td>
+                                </tr>
+                                <tr class="hover:bg-primary/5 transition-colors group" data-lat="13.0827" data-lng="80.2707">
+                                    <td class="py-3 px-6 text-on-surface font-semibold group-hover:text-primary font-['JetBrains_Mono']">CL-875</td>
+                                    <td class="py-3 px-6 font-['JetBrains_Mono']">
+                                        <div class="inline-flex items-center gap-1.5 px-2 py-0.5 border border-tertiary-container/50 bg-tertiary-container/10 text-tertiary-container text-[10px] uppercase tracking-widest font-bold">
+                                            <div class="w-1.5 h-1.5 rounded-full bg-tertiary-container"></div> High
+                                        </div>
+                                    </td>
+                                    <td class="py-3 px-6 text-right text-on-surface font-['JetBrains_Mono']">5.2</td>
+                                    <td class="py-3 px-6 text-right text-on-surface font-['JetBrains_Mono']">0.82</td>
+                                    <td class="py-3 px-6 text-on-surface-variant text-xs font-['JetBrains_Mono']">13.0827° N, 80.2707° E (Chennai)</td>
+                                    <td class="py-3 px-6"><a href="studio.html" class="text-primary hover:underline text-xs">Studio →</a></td>
+                                </tr>
+                                <tr class="hover:bg-primary/5 transition-colors group" data-lat="22.5726" data-lng="88.3639">
+                                    <td class="py-3 px-6 text-on-surface font-semibold group-hover:text-primary font-['JetBrains_Mono']">CL-862</td>
+                                    <td class="py-3 px-6 font-['JetBrains_Mono']">
+                                        <div class="inline-flex items-center gap-1.5 px-2 py-0.5 border border-outline/50 text-outline text-[10px] uppercase tracking-widest font-bold bg-surface-container-lowest/50">
+                                            <div class="w-1.5 h-1.5 rounded-full bg-outline"></div> Medium
+                                        </div>
+                                    </td>
+                                    <td class="py-3 px-6 text-right text-on-surface font-['JetBrains_Mono']">3.1</td>
+                                    <td class="py-3 px-6 text-right text-on-surface font-['JetBrains_Mono']">0.65</td>
+                                    <td class="py-3 px-6 text-on-surface-variant text-xs font-['JetBrains_Mono']">22.5726° N, 88.3639° E (Kolkata)</td>
+                                    <td class="py-3 px-6"><a href="studio.html" class="text-primary hover:underline text-xs">Studio →</a></td>
+                                </tr>
+                                <tr class="hover:bg-primary/5 transition-colors group" data-lat="17.3850" data-lng="78.4867">
+                                    <td class="py-3 px-6 text-on-surface font-semibold group-hover:text-primary font-['JetBrains_Mono']">CL-850</td>
+                                    <td class="py-3 px-6 font-['JetBrains_Mono']">
+                                        <div class="inline-flex items-center gap-1.5 px-2 py-0.5 border border-outline/50 text-outline text-[10px] uppercase tracking-widest font-bold bg-surface-container-lowest/50">
+                                            <div class="w-1.5 h-1.5 rounded-full bg-outline"></div> Medium
+                                        </div>
+                                    </td>
+                                    <td class="py-3 px-6 text-right text-on-surface font-['JetBrains_Mono']">2.8</td>
+                                    <td class="py-3 px-6 text-right text-on-surface font-['JetBrains_Mono']">0.61</td>
+                                    <td class="py-3 px-6 text-on-surface-variant text-xs font-['JetBrains_Mono']">17.3850° N, 78.4867° E (Hyderabad)</td>
+                                    <td class="py-3 px-6"><a href="studio.html" class="text-primary hover:underline text-xs">Studio →</a></td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </section>
+            </div>
+
+            <!-- Coordinate Readout (Bottom Left of Canvas) -->
+            <div class="absolute bottom-4 left-margin z-20 pointer-events-auto">
+                <div class="bg-[#0a0a0a]/80 backdrop-blur-md border border-outline/15 rounded-none px-4 py-2 flex items-center gap-4">
+                    <span class="font-mono text-xs text-on-surface flex items-center gap-2" id="coord-readout">
+                        <span class="material-symbols-outlined text-[16px] text-primary" data-icon="my_location">my_location</span>
+                        28.6139° N, 77.2090° E
+                    </span>
+                    <div class="w-px h-3 bg-outline/30"></div>
+                    <span class="font-mono text-xs text-outline" id="zoom-readout">ZOOM: 16.4</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Footer -->
+        <footer class="fixed bottom-0 w-full z-40 flex justify-between items-center px-6 h-10 bg-surface-dim border-t border-outline/15 cursor-default">
+            <div class="font-mono text-[10px] text-outline uppercase tracking-widest flex items-center gap-4">
+                <span>National Remote Sensing Centre (NRSC) | All Rights Reserved</span>
+            </div>
+            <div class="flex items-center gap-6">
+                <a class="font-mono text-[10px] uppercase tracking-widest text-outline hover:text-primary transition-colors" href="overview.html">[SYSTEM OVERVIEW]</a>
+                <a class="font-mono text-[10px] uppercase tracking-widest text-outline hover:text-primary transition-colors" href="studio.html">[3D STUDIO]</a>
+                <a class="font-mono text-[10px] uppercase tracking-widest text-outline hover:text-primary transition-colors" href="analytics.html">[CLUSTER AUDIT]</a>
+                <a class="font-mono text-[10px] uppercase tracking-widest text-outline hover:text-primary transition-colors" href="telemetry.html">[TELEMETRY]</a>
+            </div>
+        </footer>
+    </main>
+
+    <script>
+        // Radar Sweep Animation on Filter Change
+        const scanline = document.getElementById('scanline');
+        const tableContainer = document.getElementById('table-container');
+        const filterBtns = document.querySelectorAll('.filter-btn');
+
+        filterBtns.forEach(btn => {
+            btn.addEventListener('click', () => {
+                gsap.fromTo(scanline, 
+                    { top: 0, opacity: 1 },
+                    { top: tableContainer.offsetHeight, opacity: 0, duration: 1.2, ease: "power2.inOut" }
+                );
+                
+                const rows = document.querySelectorAll('tbody tr');
+                gsap.fromTo(rows,
+                    { opacity: 0.5, x: -10 },
+                    { opacity: 1, x: 0, duration: 0.4, stagger: 0.05, ease: "power1.out" }
+                );
+            });
+        });
+        
+        // Zero Detection Toggle
+        const zeroToggle = document.getElementById('zero-toggle');
+        const zeroState = document.getElementById('zero-state');
+        const tbody = document.querySelector('tbody');
+        const clusterVal = document.getElementById('clusters-detected-val');
+        let isZero = false;
+        
+        zeroToggle.addEventListener('click', () => {
+            isZero = !isZero;
+            if (isZero) {
+                zeroToggle.classList.add('bg-primary/20', 'text-primary', 'border-primary/50');
+                zeroState.classList.remove('hidden');
+                tbody.style.opacity = '0';
+                clusterVal.innerHTML = '0 <span class="text-sm font-normal text-on-surface-variant font-[\'Inter\']">entities</span>';
+                zeroToggle.innerText = 'Disable Zero-Detection';
+            } else {
+                zeroToggle.classList.remove('bg-primary/20', 'text-primary', 'border-primary/50');
+                zeroState.classList.add('hidden');
+                tbody.style.opacity = '1';
+                clusterVal.innerHTML = '87 <span class="text-sm font-normal text-on-surface-variant font-[\'Inter\']">entities</span>';
+                zeroToggle.innerText = 'Simulate Zero-Detection';
+            }
+        });
+
+        // Fly-to-Target Map Animation
+        const mapCanvas = document.getElementById('map-canvas');
+        const coordReadout = document.getElementById('coord-readout');
+        const zoomReadout = document.getElementById('zoom-readout');
+
+        document.querySelectorAll('tbody tr').forEach((row, index) => {
+            row.addEventListener('click', function(e) {
+                if (e.target.tagName.toLowerCase() === 'a') return;
+                
+                document.querySelectorAll('tbody tr').forEach(r => r.classList.remove('bg-primary/10'));
+                this.classList.add('bg-primary/10');
+                
+                const lat = this.dataset.lat;
+                const lng = this.dataset.lng;
+                const id = this.querySelector('td').innerText;
+                
+                coordReadout.innerHTML = `<span class="material-symbols-outlined text-[16px] text-primary" data-icon="my_location">my_location</span> ${lat}° N, ${lng}° E`;
+                
+                gsap.fromTo(zoomReadout, { opacity: 0 }, { opacity: 1, duration: 0.5 });
+                zoomReadout.innerText = `ZOOM: ${(16 + (Math.random() * 2)).toFixed(1)}`;
+                
+                const scale = 2.2; 
+                const xOffset = (Math.random() - 0.5) * 35;
+                const yOffset = (Math.random() - 0.5) * 35;
+                
+                gsap.to(mapCanvas, {
+                    scale: scale,
+                    xPercent: xOffset,
+                    yPercent: yOffset,
+                    duration: 2.2,
+                    ease: "power3.inOut"
+                });
+                
+                gsap.to(mapCanvas, {
+                    opacity: 0.65,
+                    duration: 0.2,
+                    delay: 2.0,
+                    yoyo: true,
+                    repeat: 1
+                });
+            });
+        });
+    </script>
+</body>
+</html>

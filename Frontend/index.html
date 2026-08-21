@@ -1,0 +1,546 @@
+<!DOCTYPE html>
+<html class="dark" lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta content="width=device-width, initial-scale=1.0" name="viewport">
+    <title>NRSC SAR Explorer - Orbital Intel & Change Detection</title>
+    <!-- Material Symbols -->
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet">
+    <!-- Google Fonts: Bricolage Grotesque, Inter, Playfair Display, JetBrains Mono -->
+    <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,700;12..96,800&amp;family=Inter:wght@400;600&amp;family=Playfair+Display:ital@1&amp;family=JetBrains+Mono:wght@400;500;700&amp;display=swap" rel="stylesheet">
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+    <!-- Tailwind Config -->
+    <script id="tailwind-config">
+        tailwind.config = {
+          darkMode: "class",
+          theme: {
+            extend: {
+              "colors": {
+                      "tertiary-fixed": "#f0dbff",
+                      "tertiary": "#ddb7ff",
+                      "on-error-container": "#ffdad6",
+                      "on-tertiary-container": "#550093",
+                      "outline": "#86948a",
+                      "surface": "#131313",
+                      "on-error": "#690005",
+                      "on-background": "#e5e2e1",
+                      "on-primary": "#003824",
+                      "error-container": "#93000a",
+                      "inverse-on-surface": "#313030",
+                      "surface-bright": "#3a3939",
+                      "primary-fixed-dim": "#4edea3",
+                      "primary-container": "#10b981",
+                      "tertiary-container": "#c487ff",
+                      "error": "#ffb4ab",
+                      "on-primary-fixed": "#002113",
+                      "surface-container-lowest": "#0e0e0e",
+                      "inverse-primary": "#006c49",
+                      "on-tertiary-fixed-variant": "#6900b3",
+                      "surface-dim": "#131313",
+                      "on-primary-container": "#00422b",
+                      "on-tertiary-fixed": "#2c0051",
+                      "surface-container-highest": "#353534",
+                      "surface-container-low": "#1c1b1b",
+                      "primary-fixed": "#6ffbbe",
+                      "primary": "#4edea3",
+                      "secondary-container": "#0566d9",
+                      "on-secondary": "#002e6a",
+                      "on-tertiary": "#490080",
+                      "secondary-fixed": "#d8e2ff",
+                      "secondary-fixed-dim": "#adc6ff",
+                      "secondary": "#adc6ff",
+                      "outline-variant": "#3c4a42",
+                      "background": "#131313",
+                      "on-surface-variant": "#bbcabf",
+                      "on-secondary-container": "#e6ecff",
+                      "on-primary-fixed-variant": "#005236",
+                      "inverse-surface": "#e5e2e1",
+                      "on-secondary-fixed": "#001a42",
+                      "surface-variant": "#353534",
+                      "surface-tint": "#4edea3",
+                      "surface-container-high": "#2a2a2a",
+                      "on-secondary-fixed-variant": "#004395",
+                      "on-surface": "#e5e2e1",
+                      "tertiary-fixed-dim": "#ddb7ff",
+                      "surface-container": "#201f1f"
+              },
+              "borderRadius": {
+                      "DEFAULT": "0.25rem",
+                      "lg": "0.5rem",
+                      "xl": "0.75rem",
+                      "full": "9999px"
+              },
+              "spacing": {
+                      "md": "24px",
+                      "xs": "8px",
+                      "gutter": "24px",
+                      "xl": "80px",
+                      "base": "4px",
+                      "sm": "16px",
+                      "lg": "48px",
+                      "margin": "32px",
+                      "sidebar-width": "340px",
+                      "toolbar-width": "72px"
+              },
+              "fontFamily": {
+                      "headline-lg": ["Bricolage Grotesque"],
+                      "accent-italic": ["Playfair Display"],
+                      "headline-lg-mobile": ["Bricolage Grotesque"],
+                      "body-lg": ["Inter"],
+                      "body-md": ["Inter"],
+                      "ui-semibold": ["Inter"],
+                      "display-lg": ["Bricolage Grotesque"],
+                      "headline-md": ["Bricolage Grotesque"],
+                      "mono": ["JetBrains Mono", "monospace"],
+                      "data-sm": ["Inter", "sans-serif"],
+                      "label-sm": ["Inter", "sans-serif"]
+              },
+              "fontSize": {
+                      "headline-lg": ["48px", { "lineHeight": "1.1", "letterSpacing": "-0.04em", "fontWeight": "700" }],
+                      "accent-italic": ["20px", { "lineHeight": "1.2", "fontWeight": "400" }],
+                      "headline-lg-mobile": ["32px", { "lineHeight": "1.1", "letterSpacing": "-0.04em", "fontWeight": "700" }],
+                      "body-lg": ["18px", { "lineHeight": "1.6", "fontWeight": "400" }],
+                      "body-md": ["16px", { "lineHeight": "1.5", "fontWeight": "400" }],
+                      "ui-semibold": ["14px", { "lineHeight": "1.4", "letterSpacing": "0.05em", "fontWeight": "600" }],
+                      "display-lg": ["72px", { "lineHeight": "1.0", "letterSpacing": "-0.05em", "fontWeight": "800" }],
+                      "headline-md": ["24px", { "lineHeight": "1.2", "letterSpacing": "-0.02em", "fontWeight": "700" }],
+                      "data-sm": ["12px", { "lineHeight": "1.2", "fontWeight": "400" }],
+                      "label-sm": ["12px", { "lineHeight": "16px", "letterSpacing": "0.15em", "fontWeight": "600" }]
+              }
+          },
+          },
+        }
+    </script>
+    <style>
+        body {
+            background-color: theme('colors.background');
+            color: theme('colors.on-background');
+            overflow: hidden;
+        }
+
+        /* Persistent 4% opacity fractal noise grain */
+        .grain-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            pointer-events: none;
+            z-index: 9999;
+            background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E");
+            opacity: 0.04;
+        }
+
+        /* 12-column structural grid lines */
+        .structural-grid {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 0;
+            display: grid;
+            grid-template-columns: repeat(12, 1fr);
+            gap: theme('spacing.gutter');
+            padding: 0 theme('spacing.margin');
+        }
+
+        .structural-grid > div {
+            border-left: 1px solid rgba(255, 255, 255, 0.05);
+            height: 100%;
+        }
+
+        .structural-grid > div:last-child {
+            border-right: 1px solid rgba(255, 255, 255, 0.05);
+        }
+        
+        .pulse-border {
+            animation: pulse-border-anim 2s infinite cubic-bezier(0.4, 0, 0.6, 1);
+        }
+        
+        @keyframes pulse-border-anim {
+            0% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.4); }
+            70% { box-shadow: 0 0 0 10px rgba(16, 185, 129, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0); }
+        }
+
+        /* High density input styling */
+        .glass-input {
+            background-color: rgba(255,255,255,0.05);
+            border: 1px solid rgba(255,255,255,0.1);
+            color: theme('colors.on-surface');
+            transition: all 0.2s ease;
+            color-scheme: dark;
+        }
+        .glass-input:focus {
+            border-color: theme('colors.primary');
+            box-shadow: 0 0 0 2px rgba(16, 185, 129, 0.2);
+            outline: none;
+        }
+        
+        .map-cursor {
+            cursor: crosshair;
+        }
+        
+        .container-marker {
+            position: absolute;
+            width: 4px;
+            height: 4px;
+            border-color: rgba(134, 148, 138, 0.5);
+            border-style: solid;
+        }
+        .marker-tl { top: -1px; left: -1px; border-width: 1px 0 0 1px; }
+        .marker-tr { top: -1px; right: -1px; border-width: 1px 1px 0 0; }
+        .marker-bl { bottom: -1px; left: -1px; border-width: 0 0 1px 1px; }
+        .marker-br { bottom: -1px; right: -1px; border-width: 0 1px 1px 0; }
+
+        /* Custom scrollbar */
+        .custom-scrollbar::-webkit-scrollbar { width: 4px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: theme('colors.primary'); }
+    </style>
+</head>
+<body class="antialiased min-h-screen font-body-md text-on-background selection:bg-primary/30 selection:text-primary flex relative flex-col">
+    <!-- Noise Overlay -->
+    <div class="grain-overlay"></div>
+    <!-- Structural Grid Lines Overlay -->
+    <div class="structural-grid">
+        <div></div><div></div><div></div><div></div><div></div><div></div><div></div><div></div><div></div><div></div><div></div><div></div>
+    </div>
+
+    <!-- TopNavBar (Global Nav) -->
+    <nav class="fixed top-0 left-0 right-0 z-50 flex justify-between items-center bg-[#0a0a0a]/80 backdrop-blur-2xl border-b border-outline/15 px-6 py-3 h-toolbar-width">
+        <a href="index.html" class="font-headline-md text-[18px] md:text-[20px] text-primary tracking-tighter uppercase flex items-center gap-2 hover:opacity-90 transition-opacity">
+            <span class="inline-block w-2.5 h-2.5 rounded-full bg-[#10B981] animate-pulse"></span>
+            <span>National Remote Sensing Centre (NRSC)</span>
+        </a>
+        <div class="hidden md:flex gap-6 lg:gap-8 items-center">
+            <a class="font-ui-semibold text-ui-semibold uppercase tracking-widest text-on-surface-variant hover:text-on-surface transition-colors" href="overview.html">Overview</a>
+            <a class="font-ui-semibold text-ui-semibold uppercase tracking-widest text-on-surface-variant hover:text-on-surface transition-colors" href="studio.html">Studio</a>
+            <a class="font-ui-semibold text-ui-semibold uppercase tracking-widest text-on-surface-variant hover:text-on-surface transition-colors" href="analytics.html">Analytics</a>
+            <a class="font-ui-semibold text-ui-semibold uppercase tracking-widest text-primary border-b-2 border-primary pb-1" href="explorer.html">Explorer</a>
+            <a class="font-ui-semibold text-ui-semibold uppercase tracking-widest text-on-surface-variant hover:text-on-surface transition-colors" href="telemetry.html">Telemetry</a>
+        </div>
+        <div class="flex gap-4 items-center">
+            <!-- System Status Pill linked to Telemetry -->
+            <a href="telemetry.html" class="flex items-center gap-2 bg-primary/10 border border-primary/20 hover:border-primary/50 transition-all rounded-none px-3 py-1 font-mono text-xs text-primary" title="View Real-Time Telemetry Diagnostics">
+                <div class="w-2 h-2 rounded-full bg-primary animate-pulse"></div>
+                <span class="text-primary uppercase tracking-widest hidden lg:inline">CDSE Satellite Link: Connected</span>
+                <span class="text-primary uppercase tracking-widest lg:hidden">Active</span>
+            </a>
+            <div class="flex gap-3">
+                <a href="analytics.html" title="Notifications & Clusters" class="flex items-center">
+                    <span class="material-symbols-outlined text-outline cursor-pointer hover:text-primary transition-colors">notifications</span>
+                </a>
+                <a href="overview.html" title="Command Center Profile" class="flex items-center">
+                    <span class="material-symbols-outlined text-outline cursor-pointer hover:text-primary transition-colors">account_circle</span>
+                </a>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Workspace Area -->
+    <main class="flex-1 flex pt-toolbar-width relative z-10 overflow-hidden">
+        <!-- Level 1 Panel: CDSE Acquisition Controls (Inner Sidebar) -->
+        <aside class="w-sidebar-width h-full bg-[#0a0a0a]/80 backdrop-blur-2xl border-r border-outline/15 flex flex-col z-20 shrink-0 relative">
+            <div class="container-marker marker-tr"></div>
+            <div class="container-marker marker-br"></div>
+            
+            <!-- Panel Header -->
+            <div class="px-6 py-5 border-b border-outline/15 flex justify-between items-center bg-surface-container-low/50">
+                <h2 class="font-ui-semibold text-ui-semibold text-outline uppercase tracking-widest">Acquisition Controls</h2>
+                <span class="material-symbols-outlined text-outline text-sm">tune</span>
+            </div>
+
+            <!-- Scrollable Controls Content -->
+            <div class="flex-1 overflow-y-auto px-6 py-6 flex flex-col gap-8 custom-scrollbar">
+                <!-- Quick App Launcher Strip -->
+                <section class="flex flex-col gap-2 p-3 bg-surface-container-low/60 border border-outline/20">
+                    <div class="flex items-center justify-between">
+                        <span class="font-mono text-[10px] text-primary uppercase tracking-widest">Connected Suites</span>
+                        <span class="w-1.5 h-1.5 rounded-full bg-primary animate-ping"></span>
+                    </div>
+                    <div class="grid grid-cols-2 gap-2 mt-1">
+                        <a href="studio.html" class="flex items-center justify-center gap-1.5 bg-surface-container-high border border-outline/20 hover:border-primary/50 text-[11px] font-mono text-on-surface hover:text-primary p-1.5 transition-all">
+                            <span class="material-symbols-outlined text-[14px]">view_in_ar</span> 3D Studio
+                        </a>
+                        <a href="analytics.html" class="flex items-center justify-center gap-1.5 bg-surface-container-high border border-outline/20 hover:border-primary/50 text-[11px] font-mono text-on-surface hover:text-primary p-1.5 transition-all">
+                            <span class="material-symbols-outlined text-[14px]">analytics</span> Analytics
+                        </a>
+                    </div>
+                </section>
+
+                <!-- Temporal Bounds (T1/T2) -->
+                <section class="flex flex-col gap-4">
+                    <div class="flex items-center justify-between">
+                        <h3 class="font-mono text-xs text-primary uppercase tracking-widest">Temporal Bounds</h3>
+                        <div class="h-px bg-outline/20 flex-1 ml-4"></div>
+                    </div>
+                    <div class="flex flex-col gap-4">
+                        <div class="flex flex-col gap-1.5">
+                            <label class="font-mono text-[10px] text-outline uppercase tracking-widest">T1 Date (Baseline)</label>
+                            <input class="glass-input rounded-none px-3 py-2 font-mono text-sm w-full" type="date" value="2023-10-01">
+                        </div>
+                        <div class="flex flex-col gap-1.5">
+                            <label class="font-mono text-[10px] text-outline uppercase tracking-widest">T2 Date (Current)</label>
+                            <input class="glass-input rounded-none px-3 py-2 font-mono text-sm w-full" type="date" value="2023-10-15">
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Processing Parameters -->
+                <section class="flex flex-col gap-4">
+                    <div class="flex items-center justify-between">
+                        <h3 class="font-mono text-xs text-primary uppercase tracking-widest">Processing Params</h3>
+                        <div class="h-px bg-outline/20 flex-1 ml-4"></div>
+                    </div>
+                    <!-- Resolution -->
+                    <div class="flex flex-col gap-1.5">
+                        <label class="font-mono text-[10px] text-outline uppercase tracking-widest">Tile Resolution</label>
+                        <select class="glass-input rounded-none px-3 py-2 font-mono text-sm w-full appearance-none">
+                            <option value="256">256 x 256 px</option>
+                            <option selected="" value="512">512 x 512 px</option>
+                        </select>
+                    </div>
+                    <!-- Model Selector -->
+                    <div class="flex flex-col gap-1.5 mt-2">
+                        <label class="font-mono text-[10px] text-outline uppercase tracking-widest">Inference Model</label>
+                        <select class="glass-input rounded-none px-3 py-2 font-mono text-sm w-full appearance-none">
+                            <option value="siamese">Siamese U-Net v2</option>
+                            <option selected="" value="snunet">SNUNet-CD (Optimized)</option>
+                        </select>
+                    </div>
+                    <!-- Sensitivity Slider -->
+                    <div class="flex flex-col gap-2 mt-4">
+                        <div class="flex justify-between items-center">
+                            <label class="font-mono text-[10px] text-outline uppercase tracking-widest">Detection Sensitivity</label>
+                            <span class="font-mono text-sm text-primary" id="sens-val">0.75</span>
+                        </div>
+                        <input id="sens-slider" class="w-full accent-primary h-1 bg-surface-variant rounded-none appearance-none cursor-pointer" max="0.9" min="0.1" step="0.05" type="range" value="0.75">
+                        <div class="flex justify-between font-mono text-[10px] text-outline uppercase tracking-widest mt-1">
+                            <span>COARSE</span>
+                            <span>FINE</span>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Quick Jump Locations -->
+                <section class="flex flex-col gap-4">
+                    <div class="flex items-center justify-between">
+                        <h3 class="font-mono text-xs text-primary uppercase tracking-widest">Saved Vectors</h3>
+                        <div class="h-px bg-outline/20 flex-1 ml-4"></div>
+                    </div>
+                    <div class="flex flex-col gap-2">
+                        <button class="bg-surface-container-low border border-outline/30 text-on-surface font-mono text-xs uppercase tracking-widest px-3 py-2.5 rounded-none hover:border-primary/50 hover:text-primary transition-colors flex items-center justify-start gap-3 w-full group">
+                            <span class="material-symbols-outlined text-[16px] text-outline group-hover:text-primary">location_on</span> New Delhi Command
+                        </button>
+                        <button class="bg-surface-container-low border border-outline/30 text-on-surface font-mono text-xs uppercase tracking-widest px-3 py-2.5 rounded-none hover:border-primary/50 hover:text-primary transition-colors flex items-center justify-start gap-3 w-full group">
+                            <span class="material-symbols-outlined text-[16px] text-outline group-hover:text-primary">location_on</span> Mumbai Port
+                        </button>
+                        <a href="studio.html" class="bg-surface-container-low border border-outline/30 text-on-surface font-mono text-xs uppercase tracking-widest px-3 py-2.5 rounded-none hover:border-primary/50 hover:text-primary transition-colors flex items-center justify-start gap-3 w-full group">
+                            <span class="material-symbols-outlined text-[16px] text-outline group-hover:text-primary">view_in_ar</span> Mumbai 3D Terrain
+                        </a>
+                    </div>
+                </section>
+            </div>
+
+            <!-- Primary Action Footer -->
+            <div class="p-6 border-t border-outline/15 bg-surface-container-low/50 mt-auto flex flex-col gap-3">
+                <button class="w-full bg-primary text-[#0a0a0a] font-ui-semibold text-ui-semibold uppercase tracking-widest py-3 px-4 rounded-none flex items-center justify-center gap-2 hover:bg-primary-fixed-dim transition-colors pulse-border relative overflow-hidden group">
+                    <span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">satellite_alt</span>
+                    <span>Run Live Intelligence</span>
+                    <div class="absolute top-0 -inset-full h-full w-1/2 z-5 block transform -skew-x-12 bg-gradient-to-r from-transparent to-white opacity-20 group-hover:animate-[shine_1s_ease-in-out]"></div>
+                </button>
+                <a href="overview.html" class="w-full bg-surface-container-high border border-outline/30 hover:border-primary/50 text-outline hover:text-primary font-mono text-[11px] uppercase tracking-widest py-2 px-3 text-center transition-all">
+                    Defense Command Center →
+                </a>
+            </div>
+        </aside>
+
+        <!-- Level 0 Canvas: Interactive Map Area -->
+        <div class="flex-1 relative bg-surface-container-lowest map-cursor overflow-hidden ml-[-1px]">
+            <!-- Satellite Basemap Layer -->
+            <div class="absolute inset-0 bg-cover bg-center opacity-70" data-alt="High-resolution tactical map of India, displaying accurate international and state borders outlined in glowing cyan/emerald vector lines." data-location="India" style="background-image: url('https://lh3.googleusercontent.com/aida-public/AB6AXuDBipvc13muhDU84O-GEV1lXzNJLdVGGZMDHVYs-ClBsbz5_jsoOw7toHUCCNDpUhEWbA62Y2u7JH1f7RVxYSACdkqxkyURQhw5rMILekseMAJwpo3DNKIEP0RZaljGWZFJNSt0KRZmgrnDH_v1y_7ZhS7R_yDJLcJE15D_FE7FH9VckUK2UQ2bxrysnNF9PxvA9iGUAQdVFAo5ZDqGpBf7IC_7uHftsW-kXq3fAtNFHNA0YwQUMcbD'); filter: grayscale(100%) contrast(1.2) brightness(0.8);">
+                <!-- Map Overlay Gradient for better UI contrast -->
+                <div class="absolute inset-0 bg-gradient-to-b from-[#0a0a0a]/50 to-transparent pointer-events-none"></div>
+            </div>
+
+            <!-- Interactive Drawing Overlay (Bounding Box Demo) -->
+            <div class="absolute inset-0 pointer-events-none">
+                <!-- Drawn Bounding Box -->
+                <div class="absolute top-[20%] left-[25%] w-[40%] h-[35%] border border-primary bg-primary/10 flex items-start justify-end p-2 pointer-events-auto cursor-move relative">
+                    <div class="container-marker marker-tl border-primary"></div>
+                    <div class="container-marker marker-tr border-primary"></div>
+                    <div class="container-marker marker-bl border-primary"></div>
+                    <div class="container-marker marker-br border-primary"></div>
+                    <!-- Bounding Box Metrics -->
+                    <div class="bg-surface-container-highest/90 backdrop-blur-md border border-primary/50 text-primary font-mono text-xs px-2 py-1 rounded-none shadow-sm pointer-events-none absolute -top-8 right-0 flex items-center gap-2">
+                        <span>Area: 42.5 km²</span>
+                        <a href="studio.html" class="underline text-on-surface hover:text-primary pointer-events-auto text-[10px]">Open in 3D Studio</a>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Floating Map Controls (Level 2 Overlays) -->
+            <div class="absolute right-6 top-6 flex flex-col gap-2">
+                <button class="w-10 h-10 bg-[#0a0a0a]/80 backdrop-blur-md border border-outline/30 rounded-none shadow-sm text-on-surface flex items-center justify-center hover:bg-surface-container-high hover:text-primary hover:border-primary/50 transition-colors pointer-events-auto" title="Zoom In">
+                    <span class="material-symbols-outlined text-[20px]">add</span>
+                </button>
+                <button class="w-10 h-10 bg-[#0a0a0a]/80 backdrop-blur-md border border-outline/30 rounded-none shadow-sm text-on-surface flex items-center justify-center hover:bg-surface-container-high hover:text-primary hover:border-primary/50 transition-colors pointer-events-auto" title="Zoom Out">
+                    <span class="material-symbols-outlined text-[20px]">remove</span>
+                </button>
+                <div class="h-px w-full bg-outline/20 my-1"></div>
+                <button class="w-10 h-10 bg-primary/20 backdrop-blur-md border border-primary rounded-none shadow-sm text-primary flex items-center justify-center hover:bg-primary/30 transition-colors pointer-events-auto" title="Draw Bounding Box">
+                    <span class="material-symbols-outlined text-[20px]">crop_free</span>
+                </button>
+                <a href="studio.html" class="w-10 h-10 bg-[#0a0a0a]/80 backdrop-blur-md border border-outline/30 rounded-none shadow-sm text-on-surface flex items-center justify-center hover:bg-surface-container-high hover:text-primary hover:border-primary/50 transition-colors pointer-events-auto" title="3D Terrain Studio">
+                    <span class="material-symbols-outlined text-[20px]">view_in_ar</span>
+                </a>
+                <a href="analytics.html" class="w-10 h-10 bg-[#0a0a0a]/80 backdrop-blur-md border border-outline/30 rounded-none shadow-sm text-on-surface flex items-center justify-center hover:bg-surface-container-high hover:text-primary hover:border-primary/50 transition-colors pointer-events-auto" title="Cluster Analytics">
+                    <span class="material-symbols-outlined text-[20px]">analytics</span>
+                </a>
+            </div>
+
+            <!-- Coordinate Readout Pill -->
+            <div class="absolute bottom-6 left-1/2 transform -translate-x-1/2 bg-[#0a0a0a]/80 backdrop-blur-md border border-outline/30 rounded-none px-6 py-2 shadow-sm flex items-center gap-6 pointer-events-none">
+                <div class="container-marker marker-tl"></div><div class="container-marker marker-tr"></div>
+                <div class="container-marker marker-bl"></div><div class="container-marker marker-br"></div>
+                <div class="flex items-center gap-2 text-outline font-mono text-xs">
+                    <span class="material-symbols-outlined text-[16px]">my_location</span>
+                    <span id="display-lat">LAT: 28.6139° N</span>
+                </div>
+                <div class="w-px h-4 bg-outline/30"></div>
+                <div class="flex items-center gap-2 text-outline font-mono text-xs">
+                    <span id="display-lng">LNG: 77.2090° E</span>
+                </div>
+                <div class="w-px h-4 bg-outline/30"></div>
+                <div class="flex items-center gap-2 text-primary font-mono text-xs uppercase tracking-widest">
+                    <span>ZOOM: 8z</span>
+                </div>
+            </div>
+
+            <!-- Radar Sweep Line -->
+            <div class="absolute top-0 left-0 w-1 h-full bg-primary/40 shadow-[0_0_20px_rgba(78,222,163,0.8)] z-20 pointer-events-none hidden" id="radar-sweep"></div>
+            
+            <!-- Terminal Log Overlay -->
+            <div class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-64 bg-[#0a0a0a]/90 border border-primary/30 p-4 font-mono text-[10px] text-primary z-30 hidden backdrop-blur-xl" id="terminal-overlay">
+                <div class="flex justify-between mb-2 border-b border-primary/20 pb-1">
+                    <span class="tracking-widest uppercase">System Log</span>
+                    <span class="animate-pulse">_</span>
+                </div>
+                <div class="flex flex-col gap-1" id="log-content"></div>
+            </div>
+
+            <!-- Map HUD Reticle -->
+            <div class="fixed pointer-events-none z-50 hidden" id="map-hud-reticle">
+                <div class="relative -translate-x-1/2 -translate-y-1/2">
+                    <div class="absolute top-0 left-[-20px] w-10 h-px bg-primary/50"></div>
+                    <div class="absolute top-[-20px] left-0 h-10 w-px bg-primary/50"></div>
+                    <div class="absolute top-2 left-2 font-mono text-[8px] text-primary whitespace-nowrap opacity-70">
+                        <div id="hud-lat">X: 0.000</div>
+                        <div id="hud-lng">Y: 0.000</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Footer -->
+    <footer class="bg-[#0a0a0a] border-t border-outline/15 px-6 py-3 flex flex-col sm:flex-row justify-between items-center gap-3 z-50 relative shrink-0">
+        <div class="text-outline font-mono text-xs uppercase tracking-widest">
+            National Remote Sensing Centre (NRSC) | All Rights Reserved
+        </div>
+        <div class="flex gap-4 text-outline font-mono text-xs uppercase tracking-widest">
+            <a class="hover:text-primary transition-colors" href="overview.html">[SYSTEM OVERVIEW]</a>
+            <a class="hover:text-primary transition-colors" href="studio.html">[3D STUDIO]</a>
+            <a class="hover:text-primary transition-colors" href="analytics.html">[CLUSTER AUDIT]</a>
+            <a class="hover:text-primary transition-colors" href="telemetry.html">[TELEMETRY]</a>
+        </div>
+    </footer>
+
+    <script>
+    (function() {
+        const map = document.querySelector('main > div.flex-1');
+        const roiBox = map.querySelector('.border-primary.bg-primary\\/10');
+        const areaBadge = roiBox.querySelector('span');
+        const runBtn = document.querySelector('button.pulse-border');
+        const sweep = document.getElementById('radar-sweep');
+        const terminal = document.getElementById('terminal-overlay');
+        const logContent = document.getElementById('log-content');
+        const hud = document.getElementById('map-hud-reticle');
+        const latDisplay = document.getElementById('display-lat');
+        const lngDisplay = document.getElementById('display-lng');
+        const sensSlider = document.getElementById('sens-slider');
+        const sensVal = document.getElementById('sens-val');
+
+        if (sensSlider && sensVal) {
+            sensSlider.addEventListener('input', (e) => {
+                sensVal.innerText = parseFloat(e.target.value).toFixed(2);
+            });
+        }
+
+        // 1. ROI Box Interaction (Draggable)
+        let isDragging = false;
+        roiBox.addEventListener('mousedown', () => isDragging = true);
+        window.addEventListener('mouseup', () => isDragging = false);
+        map.addEventListener('mousemove', (e) => {
+            if (isDragging) {
+                const rect = map.getBoundingClientRect();
+                const x = ((e.clientX - rect.left) / rect.width) * 100;
+                const y = ((e.clientY - rect.top) / rect.height) * 100;
+                roiBox.style.left = `${Math.max(0, Math.min(x - 20, 60))}%`;
+                roiBox.style.top = `${Math.max(0, Math.min(y - 17, 65))}%`;
+                const area = (parseFloat(roiBox.style.width || 40) * parseFloat(roiBox.style.height || 35) * 0.03).toFixed(1);
+                if (areaBadge) areaBadge.innerText = `Area: ${area} km²`;
+            }
+            // HUD Reticle
+            hud.classList.remove('hidden');
+            hud.style.left = `${e.clientX}px`;
+            hud.style.top = `${e.clientY}px`;
+            document.getElementById('hud-lat').innerText = `X: ${e.clientX}`;
+            document.getElementById('hud-lng').innerText = `Y: ${e.clientY}`;
+        });
+
+        // 2. Radar Sweep Trigger
+        runBtn.addEventListener('click', () => {
+            sweep.classList.remove('hidden');
+            terminal.classList.remove('hidden');
+            logContent.innerHTML = '';
+            const logs = ['Initializing CDSE Uplink...', 'Calibrating Radiometrics...', 'SNUNet-CD Inference Running...', '87 Target Clusters Locked.'];
+            logs.forEach((msg, i) => {
+                setTimeout(() => {
+                    const div = document.createElement('div');
+                    div.innerText = `> ${msg}`;
+                    logContent.appendChild(div);
+                }, i * 700);
+            });
+            sweep.animate([{ left: '0%' }, { left: '100%' }], { duration: 2400, iterations: 1 }).onfinish = () => {
+                sweep.classList.add('hidden');
+                setTimeout(() => terminal.classList.add('hidden'), 1200);
+            };
+        });
+
+        // 3. Vector Transitions
+        const locations = {
+            'New Delhi Command': { lat: '28.6139° N', lng: '77.2090° E', pos: 'center' },
+            'Mumbai Port': { lat: '18.9440° N', lng: '72.8359° E', pos: 'bottom left' }
+        };
+        document.querySelectorAll('aside button.group').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const name = btn.innerText.trim();
+                const loc = locations[name];
+                if (!loc) return;
+                const bg = map.querySelector('.bg-cover');
+                bg.style.transition = 'all 1.8s cubic-bezier(0.16, 1, 0.3, 1)';
+                bg.style.backgroundPosition = loc.pos;
+                latDisplay.innerText = `LAT: ${loc.lat}`;
+                lngDisplay.innerText = `LNG: ${loc.lng}`;
+            });
+        });
+    })();
+    </script>
+</body>
+</html>
