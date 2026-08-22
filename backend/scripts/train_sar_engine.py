@@ -21,6 +21,7 @@ sys.path.insert(0, str(SRC_DIR))
 # ============================================================
 
 from detection.snunet_cd import SNUNetCD
+from detection.siamese_resnet34_unet import SiameseResNet34UNet
 from detection.losses import BCEDiceLoss
 
 from training.sar_config import SARTrainingConfig
@@ -226,6 +227,34 @@ def main():
         help="Override DataLoader workers.",
     )
 
+    parser.add_argument(
+        "--model",
+        choices=["snunet", "resnet34"],
+        default="snunet",
+        help="Architecture to train. 'snunet' (Model 3) or 'resnet34' (Model 2)."
+    )
+
+    parser.add_argument(
+        "--lr",
+        type=float,
+        default=None,
+        help="Override learning rate.",
+    )
+
+    parser.add_argument(
+        "--loss",
+        choices=["bce_dice", "bce_tversky"],
+        default="bce_dice",
+        help="Loss function to use.",
+    )
+
+    parser.add_argument(
+        "--pos-weight",
+        type=float,
+        default=None,
+        help="Override pos_weight.",
+    )
+
     args = parser.parse_args()
 
     if args.train_batches < 1:
@@ -253,11 +282,17 @@ def main():
     if args.num_workers is not None:
         config.num_workers = args.num_workers
 
+    if args.lr is not None:
+        config.learning_rate = args.lr
+
+    if args.pos_weight is not None:
+        config.pos_weight = args.pos_weight
+
     if args.smoke_test:
         config.epochs = 1
 
     config.experiment_name = (
-        f"tum_oscd_sar_{args.init}"
+        f"tum_oscd_sar_{args.model}_{args.loss}_{args.init}"
         + ("_smoke" if args.smoke_test else "")
     )
 
@@ -372,15 +407,19 @@ def main():
     # Model
     # ========================================================
 
-    model = SNUNetCD(
-        in_channels=config.in_channels,
-        num_classes=config.num_classes,
-    )
-
-    print(
-        "Model created: "
-        "SNUNet-CD 2-channel SAR"
-    )
+    if args.model == "resnet34":
+        model = SiameseResNet34UNet(
+            in_channels=config.in_channels,
+            num_classes=config.num_classes,
+            sar_init_mode="average"
+        )
+        print("Model created: SiameseResNet34UNet (Model 2) 2-channel SAR")
+    else:
+        model = SNUNetCD(
+            in_channels=config.in_channels,
+            num_classes=config.num_classes,
+        )
+        print("Model created: SNUNet-CD (Model 3) 2-channel SAR")
 
     # ========================================================
     # Initialization
@@ -435,11 +474,23 @@ def main():
     # Loss
     # ========================================================
 
-    criterion = BCEDiceLoss(
-        bce_weight=config.bce_weight,
-        dice_weight=config.dice_weight,
-        pos_weight=config.pos_weight,
-    )
+    if getattr(args, 'loss', 'bce_dice') == 'bce_tversky':
+        from detection.losses import BCETverskyLoss
+        criterion = BCETverskyLoss(
+            bce_weight=config.bce_weight,
+            tversky_weight=getattr(config, 'tversky_weight', 0.5),
+            alpha=getattr(config, 'tversky_alpha', 0.4),
+            beta=getattr(config, 'tversky_beta', 0.6),
+            pos_weight=config.pos_weight,
+        )
+        print("Using Loss: BCETverskyLoss (alpha=0.4, beta=0.6)")
+    else:
+        criterion = BCEDiceLoss(
+            bce_weight=config.bce_weight,
+            dice_weight=config.dice_weight,
+            pos_weight=config.pos_weight,
+        )
+        print("Using Loss: BCEDiceLoss")
 
     # ========================================================
     # Optimizer
@@ -506,6 +557,7 @@ def main():
         "stride": config.stride,
         "input_channels": config.in_channels,
         "initialization": args.init,
+        "model_architecture": args.model,
     }
 
     with open(
@@ -574,6 +626,34 @@ def main():
             f"Best F1: {engine.best_f1:.4f}"
         )
 
+    # Generate final evaluation report
+    print("Generating evaluation report artifacts...")
+    run_info = {
+        "run_id": run_id,
+        "experiment_name": config.experiment_name,
+        "timestamp": timestamp,
+        "duration": time.time() - engine.timing.global_start_time if hasattr(engine, "timing") else 0
+    }
+    
+    engine.reporter.generate_report(
+        run_info=run_info,
+        status="COMPLETED"
+    )
+    print(f"Report generated at {run_dir / 'report.md'}")
+
+    # Generate threshold sweep automatically
+    print("Running threshold sweep...")
+    import subprocess
+    sweep_script = PROJECT_ROOT / "backend" / "scripts" / "sweep_threshold.py"
+    if sweep_script.exists():
+        subprocess.run([
+            sys.executable,
+            str(sweep_script),
+            "--model", args.model,
+            "--run-dir", str(run_dir)
+        ], check=True)
+    else:
+        print(f"Warning: sweep_threshold.py not found at {sweep_script}")
 
 if __name__ == "__main__":
     main()

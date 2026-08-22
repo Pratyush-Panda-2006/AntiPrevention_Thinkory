@@ -14,7 +14,7 @@ def generate_1d_windows(length, patch_size, stride):
     return windows
 
 def main():
-    root_dir = Path(r"d:\Projects\border surv")
+    root_dir = Path(__file__).resolve().parent.parent.parent.parent
     manifest_path = root_dir / "data" / "sar" / "tum_oscd" / "sar_scene_manifest.json"
     split_path = root_dir / "data" / "sar" / "tum_oscd" / "sar_split.json"
     output_index_path = root_dir / "data" / "sar" / "tum_oscd" / "sar_patch_index.json"

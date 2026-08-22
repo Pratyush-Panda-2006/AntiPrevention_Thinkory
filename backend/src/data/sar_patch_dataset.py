@@ -22,6 +22,7 @@ class TUMSARChangeDetectionDataset(Dataset):
             raise ValueError(f"Split must be 'train' or 'validation', got {split}. 'test' is not permitted.")
             
         self.root_dir = Path(root_dir) if root_dir else Path.cwd()
+        self.split = split
         
         with open(patch_index_path, 'r') as f:
             index_data = json.load(f)
@@ -94,6 +95,30 @@ class TUMSARChangeDetectionDataset(Dataset):
             t2_norm = t2_padded
             target_arr = target_padded
             validity_mask = validity_padded
+            
+        # 6.5. Augmentation (only for train)
+        if self.split == 'train':
+            # Horizontal flip
+            if np.random.rand() > 0.5:
+                t1_norm = np.flip(t1_norm, axis=2).copy()
+                t2_norm = np.flip(t2_norm, axis=2).copy()
+                target_arr = np.flip(target_arr, axis=2).copy()
+                validity_mask = np.flip(validity_mask, axis=2).copy()
+                
+            # Vertical flip
+            if np.random.rand() > 0.5:
+                t1_norm = np.flip(t1_norm, axis=1).copy()
+                t2_norm = np.flip(t2_norm, axis=1).copy()
+                target_arr = np.flip(target_arr, axis=1).copy()
+                validity_mask = np.flip(validity_mask, axis=1).copy()
+                
+            # Rotation
+            k = np.random.randint(0, 4)
+            if k > 0:
+                t1_norm = np.rot90(t1_norm, k=k, axes=(1, 2)).copy()
+                t2_norm = np.rot90(t2_norm, k=k, axes=(1, 2)).copy()
+                target_arr = np.rot90(target_arr, k=k, axes=(1, 2)).copy()
+                validity_mask = np.rot90(validity_mask, k=k, axes=(1, 2)).copy()
             
         # 7. Tensor Contract
         return {

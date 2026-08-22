@@ -55,7 +55,10 @@ class SARTrainingConfig:
 
     bce_weight: float = 0.5
     dice_weight: float = 0.5
-    pos_weight: float = 1.0
+    tversky_weight: float = 0.5
+    tversky_alpha: float = 0.4
+    tversky_beta: float = 0.6
+    pos_weight: float = 20.0
 
     # =========================================================
     # Data loading

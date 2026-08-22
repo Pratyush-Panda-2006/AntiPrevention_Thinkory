@@ -109,6 +109,57 @@ class DiceLoss(nn.Module):
         return 1.0 - dice.mean()
 
 
+class TverskyLoss(nn.Module):
+    """
+    Tversky loss for binary segmentation.
+    
+    Tversky = TP / (TP + alpha * FN + beta * FP)
+    """
+
+    def __init__(self, alpha: float = 0.4, beta: float = 0.6, smooth: float = 1.0):
+        super().__init__()
+        self.alpha = alpha
+        self.beta = beta
+        self.smooth = smooth
+
+    def forward(
+        self,
+        logits: torch.Tensor,
+        targets: torch.Tensor,
+        valid_mask: torch.Tensor | None = None,
+    ) -> torch.Tensor:
+        probabilities = torch.sigmoid(logits)
+
+        if valid_mask is not None:
+            if valid_mask.shape != logits.shape:
+                raise ValueError(
+                    "valid_mask must have the same shape as logits. "
+                    f"Got logits={logits.shape}, "
+                    f"valid_mask={valid_mask.shape}"
+                )
+
+            valid_mask = valid_mask.to(
+                dtype=probabilities.dtype,
+                device=probabilities.device,
+            )
+
+            probabilities = probabilities * valid_mask
+            targets = targets * valid_mask
+
+        probabilities = probabilities.contiguous().view(probabilities.shape[0], -1)
+        targets = targets.contiguous().view(targets.shape[0], -1)
+
+        tp = (probabilities * targets).sum(dim=1)
+        fp = (probabilities * (1.0 - targets)).sum(dim=1)
+        fn = ((1.0 - probabilities) * targets).sum(dim=1)
+
+        tversky = (tp + self.smooth) / (
+            tp + self.alpha * fn + self.beta * fp + self.smooth
+        )
+
+        return 1.0 - tversky.mean()
+
+
 class BCEDiceLoss(nn.Module):
     """
     Combined BCE + Dice loss.
@@ -262,6 +313,87 @@ class BCEDiceLoss(nn.Module):
         )
 
         return total
+
+
+class BCETverskyLoss(nn.Module):
+    """
+    Combined BCE + Tversky loss.
+    
+    Total loss:
+        loss = bce_weight * BCE + tversky_weight * Tversky
+    """
+
+    def __init__(
+        self,
+        bce_weight: float = 0.5,
+        tversky_weight: float = 0.5,
+        alpha: float = 0.4,
+        beta: float = 0.6,
+        pos_weight: float | None = None,
+    ):
+        super().__init__()
+
+        if bce_weight < 0 or tversky_weight < 0:
+            raise ValueError("Loss weights must be non-negative.")
+
+        if bce_weight == 0 and tversky_weight == 0:
+            raise ValueError("At least one loss weight must be greater than zero.")
+
+        self.bce_weight = bce_weight
+        self.tversky_weight = tversky_weight
+
+        self.tversky_loss = TverskyLoss(alpha=alpha, beta=beta)
+
+        if pos_weight is not None:
+            pos_weight = torch.as_tensor(pos_weight, dtype=torch.float32)
+
+        self.register_buffer("pos_weight", pos_weight, persistent=False)
+
+    def forward(
+        self,
+        logits: torch.Tensor,
+        targets: torch.Tensor,
+        valid_mask: torch.Tensor | None = None,
+    ) -> torch.Tensor:
+        if logits.shape != targets.shape:
+            raise ValueError(
+                "Logits and targets must have identical shapes. "
+                f"Got logits={logits.shape}, targets={targets.shape}"
+            )
+
+        if targets.min() < 0 or targets.max() > 1:
+            raise ValueError("Targets must contain values in [0, 1].")
+
+        if valid_mask is not None:
+            if valid_mask.shape != logits.shape:
+                raise ValueError(
+                    "valid_mask must have the same shape as logits."
+                )
+
+            if valid_mask.dtype != torch.bool:
+                valid_mask = valid_mask > 0
+
+            valid_count = int(valid_mask.sum().item())
+
+            if valid_count == 0:
+                raise ValueError("valid_mask contains no valid pixels.")
+
+            mask = valid_mask.to(dtype=logits.dtype, device=logits.device)
+
+            bce_map = F.binary_cross_entropy_with_logits(
+                logits, targets, pos_weight=self.pos_weight, reduction="none"
+            )
+
+            masked_bce = (bce_map * mask).sum() / mask.sum()
+
+        else:
+            masked_bce = F.binary_cross_entropy_with_logits(
+                logits, targets, pos_weight=self.pos_weight
+            )
+
+        tversky = self.tversky_loss(logits, targets, valid_mask=valid_mask)
+
+        return self.bce_weight * masked_bce + self.tversky_weight * tversky
 
 
 def build_loss(

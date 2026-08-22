@@ -214,8 +214,30 @@ class ExperimentReporter:
             f"- **Batch Size**: {config.get('batch_size')}",
             f"- **Learning Rate**: {config.get('learning_rate')}",
             f"- **BCE Weight**: {config.get('bce_weight')}",
-            f"- **Dice Weight**: {config.get('dice_weight')}",
+            f"- **Dice Weight**: {config.get('dice_weight', 'N/A')}",
+            f"- **Tversky Weight**: {config.get('tversky_weight', 'N/A')}",
+            f"- **Tversky Alpha**: {config.get('tversky_alpha', 'N/A')}",
+            f"- **Tversky Beta**: {config.get('tversky_beta', 'N/A')}",
             f"- **AMP Enabled**: {config.get('use_amp')}",
+            ""
+        ])
+        
+        try:
+            with open(self.run_dir / "dataset_info.json", "r") as f:
+                dataset_info = json.load(f)
+        except Exception:
+            dataset_info = {}
+
+        md.extend([
+            "## 4.5 Dataset & Model Information",
+            f"- **Dataset**: {dataset_info.get('dataset_name')}",
+            f"- **Split**: Train ({dataset_info.get('train_patch_count')} patches) / Val ({dataset_info.get('validation_patch_count')} patches)",
+            f"- **Architecture**: SNUNet-CD",
+            f"- **Input Modalities**: {dataset_info.get('input_channels')}-channel SAR (VV + VH)",
+            f"- **Augmentation**: Spatial (Random Flips, 90° Rotations) applied to Train",
+            f"- **Class Distribution**: ~22:1 Imbalance (handled via pos_weight={config.get('pos_weight', 20.0)})",
+            f"- **Run Directory**: `{self.run_dir}`",
+            f"- **Checkpoints**: `{self.run_dir / 'checkpoints'}`",
             ""
         ])
         
@@ -235,10 +257,30 @@ class ExperimentReporter:
             
             if best_epoch:
                 md.extend([
-                    "## 6. Best Model",
+                    "## 6. Final Evaluation Summary",
                     f"- **Best Epoch**: {best_epoch['epoch']}",
                     f"- **Best F1**: {best_epoch['f1']:.4f}",
-                    f"- **Validation Loss**: {best_epoch['val_loss']:.4f}",
+                    f"- **Best IoU**: {best_epoch['iou']:.4f}",
+                    f"- **Best Precision**: {best_epoch.get('precision', 0):.4f}",
+                    f"- **Best Recall**: {best_epoch.get('recall', 0):.4f}",
+                    f"- **Final Epoch**: {history[-1]['epoch']}",
+                    f"- **Final F1**: {history[-1]['f1']:.4f}",
+                    f"- **Early Stopped**: {'Yes' if history[-1]['epoch'] < config.get('epochs', 30) else 'No'}",
+                    ""
+                ])
+                
+                baseline_f1 = 0.2545
+                baseline_iou = 0.1458
+                f1_diff = best_epoch['f1'] - baseline_f1
+                iou_diff = best_epoch['iou'] - baseline_iou
+                
+                md.extend([
+                    "## 7. Model 3 Baseline Comparison",
+                    f"- **Previous Best F1**: {baseline_f1:.4f}",
+                    f"- **Current Best F1**: {best_epoch['f1']:.4f} ({'+' if f1_diff > 0 else ''}{f1_diff:.4f})",
+                    f"- **Previous Best IoU**: {baseline_iou:.4f}",
+                    f"- **Current Best IoU**: {best_epoch['iou']:.4f} ({'+' if iou_diff > 0 else ''}{iou_diff:.4f})",
+                    f"- **Status**: {'**IMPROVED** 🚀' if f1_diff > 0 else '**WORSENED** 📉'}",
                     ""
                 ])
 
