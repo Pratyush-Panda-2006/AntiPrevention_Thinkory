@@ -176,7 +176,7 @@ def main():
 
     parser.add_argument(
         "--init",
-        choices=["scratch", "transfer"],
+        choices=["scratch", "transfer", "conservative"],
         default="scratch",
         help=(
             "Model initialization strategy. "
@@ -386,14 +386,22 @@ def main():
     # Initialization
     # ========================================================
 
-    if args.init == "transfer":
+    if args.init in ("transfer", "conservative"):
 
-        transfer_checkpoint = (
-            BACKEND_DIR
-            / "runs"
-            / "sar_transfer_init"
-            / "snunet_cd_sar_transfer_init.pt"
-        )
+        if args.init == "transfer":
+            transfer_checkpoint = (
+                BACKEND_DIR
+                / "runs"
+                / "sar_transfer_init"
+                / "snunet_cd_sar_transfer_init.pt"
+            )
+        else:
+            transfer_checkpoint = (
+                BACKEND_DIR
+                / "runs"
+                / "sar_transfer_conservative"
+                / "snunet_cd_sar_conservative.pt"
+            )
 
         if not transfer_checkpoint.exists():
             raise FileNotFoundError(
@@ -402,7 +410,7 @@ def main():
             )
 
         print(
-            "Loading SAR transfer checkpoint:"
+            "Loading SAR initialization checkpoint:"
         )
         print(
             transfer_checkpoint
@@ -414,7 +422,7 @@ def main():
         )
 
         print(
-            "Transfer initialization loaded."
+            f"{args.init.capitalize()} initialization loaded."
         )
 
     else:
